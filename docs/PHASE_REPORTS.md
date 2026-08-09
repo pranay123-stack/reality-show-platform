@@ -726,3 +726,117 @@ already passed.
 title, description, links to the contestants involved), then the question, a countdown, and either
 answer buttons or the live split. Below the list sits the historical analytics panel: questions
 asked, answers given, how many verdicts were clear-cut, and who the audience has sided with.
+
+---
+
+## Phase 10 — Real-time Live Polls over WebSockets
+
+### Transport
+
+Socket.IO bound to the same HTTP server as the REST API (one port, one TLS terminator), namespace
+`/live`, with the `@socket.io/redis-adapter` so rooms work across more than one API process —
+without it a vote handled by instance A would never reach a client connected to instance B.
+
+Authentication happens once in the handshake, from `auth.token`, an `Authorization` header, or the
+`rp_at` cookie (browsers cannot set headers on a WebSocket handshake, so the cookie is the real
+path). A revoked session or a changed role invalidates the socket exactly as it does over HTTP.
+Anonymous sockets connect and spectate; only a verified, active user may vote.
+
+### Rooms
+
+| Room | Contents |
+| --- | --- |
+| `show:{id}` | everyone — receives `poll:started` |
+| `poll:{id}` | everyone watching a poll — receives **totals only** |
+| `poll:{id}:voters` | clients that have already voted — receives the **full split** |
+| `user:{id}` | that user's sockets — `points:awarded` |
+| `admin` | ADMIN/PRODUCER/MODERATOR |
+
+### The close race
+
+A vote can arrive in the same millisecond as the close, so both are written as **single conditional
+UPDATE statements** and the database decides the ordering:
+
+```
+vote:  UPDATE LivePoll SET totalVotes = totalVotes + 1, version = version + 1
+       WHERE id = ? AND status = 'ACTIVE' AND (closesAt IS NULL OR closesAt > now())
+
+close: UPDATE LivePoll SET status = 'CLOSED', closedAt = now(), version = version + 1
+       WHERE id = ? AND status IN ('ACTIVE','PAUSED')
+```
+
+Whichever commits first wins. There is no read-then-write window for a race to slip through, and
+because the whole vote runs in one transaction a rejected or duplicate vote leaves nothing behind —
+no orphaned increment, no phantom ledger entry. Closing is idempotent by construction: the second
+call simply matches nothing.
+
+### Coalesced broadcasting
+
+Emitting per vote would make broadcast volume equal vote volume — 10 000 voters would mean 10 000
+fan-outs. Instead each poll gets at most one frame per 250 ms tick carrying the latest counts, so
+cost scales with the number of *polls*, not votes. The trade is up to one tick of on-screen
+staleness, which is invisible next to network latency.
+
+### Client rules
+
+1. **Never trust a stale frame** — every update carries a monotonic `version`; anything not greater
+   than what was already applied is dropped.
+2. **Re-sync, don't resume** — on reconnect the client re-joins and takes the server's snapshot
+   wholesale rather than replaying buffered deltas.
+3. **Optimism only where it is safe** — the user's own selection updates immediately; aggregate
+   counts only ever come from the server.
+
+### A real leak, found by testing with two browsers
+
+The first implementation broadcast per-option counts to the whole poll room. The two-tab check
+showed a spectator's "Results appear once you vote" disappearing the moment *someone else* voted —
+the tally was on the wire for anyone with developer tools open, and withholding it in the UI would
+have been theatre.
+
+Fixed server-side with the split-room design above: voters get the breakdown, everyone else gets
+participation volume only, and `.except()` stops a voter receiving both frames. Once a poll closes
+the split becomes public, so every spectator socket is moved into the voters' room before the final
+tally is flushed. Three regression tests now cover it.
+
+### Results actually observed
+
+**30 realtime tests**, all against a *real listening server with real socket clients* — nothing
+mocked. Full suite: **203 API tests** across 15 files, plus 7 shared.
+
+Coverage of everything the phase asked for:
+
+- **multiple concurrent users** — 12 simultaneous voters, all counted exactly once, per-option
+  counts summing to the cached total
+- **duplicate votes** — one user firing 8 votes at once: exactly 1 accepted, 7 `VOTE_DUPLICATE`,
+  stored total 1
+- **reconnect** — a fresh socket re-syncs authoritative state including the vote already cast, and
+  keeps receiving broadcasts afterwards; `poll:leave` genuinely stops delivery
+- **closed poll** — refused on status, refused on a passed deadline while the status still reads
+  `ACTIVE`, and refused with zero points paid
+- **race conditions around closing** — 10 votes fired simultaneously with the close: every ack is
+  either success or `POLL_CLOSED`, and stored state matches what clients were told exactly
+  (`pollVote count == accepted == totalVotes == option count`)
+- plus: anonymous and unverified votes refused, forged and revoked tokens treated as anonymous,
+  coalescing proven (10 votes → fewer than 10 frames, final state still correct), lifecycle
+  broadcasts (`poll:started` / `poll:closed` / `poll:result`), producer-only lifecycle, and a tie
+  reported as **no winner** rather than a coin flip
+
+### Live browser verification (two real tabs)
+
+| Check | Result |
+| --- | --- |
+| Voter sees own tally after voting | yes |
+| Spectator's counts hidden before voting | yes |
+| Spectator's counts still hidden after someone else votes | **yes** (was the leak) |
+| Spectator's total immediately after voting | **"2 votes"** — includes the other tab's vote |
+
+That last line is the end-to-end proof: the second tab cast one vote and immediately saw two, a
+number that could only have come from the server.
+
+`pnpm typecheck` 7/7 · `pnpm lint` 5/5 · `pnpm build` 4/4.
+
+### Also added
+
+- HTTP voting (`POST /polls/:id/vote`) alongside the socket path, so a client behind a proxy that
+  blocks WebSockets can still take part under identical server-side rules.
+- `apps/web/scripts/verify-realtime.mjs` — the two-tab harness used above, kept for reuse.

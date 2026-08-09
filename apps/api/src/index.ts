@@ -1,4 +1,5 @@
 import { buildApp } from './app.js';
+import { attachRealtime } from './realtime/server.js';
 import { getConfig } from './core/config.js';
 import { checkDatabase, disconnectPrisma } from './core/prisma.js';
 import { checkRedis, disconnectRedis } from './core/redis.js';
@@ -23,8 +24,13 @@ async function main(): Promise<void> {
 
   app.log.info({ database: 'up', redis: 'up' }, 'dependencies verified');
 
+  // Socket.IO binds to the same HTTP server, so realtime and REST share a port
+  // and a single TLS terminator in production.
+  await attachRealtime(app);
+
   await app.listen({ port: config.API_PORT, host: config.API_HOST });
   app.log.info(`API listening on http://${config.API_HOST}:${config.API_PORT}`);
+  app.log.info('realtime namespace /live attached');
 
   const shutdown = async (signal: string) => {
     app.log.info({ signal }, 'shutting down');
