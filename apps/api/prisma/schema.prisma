@@ -1,0 +1,1730 @@
+// ---------------------------------------------------------------------------
+// Reality Platform — database schema (Phase 2)
+//
+// Invariants this schema enforces at the database level, not merely in code:
+//   1. One vote per user per subject           → @@unique on every vote table
+//   2. No duplicate point credit                → @@unique on the ledger's source tuple
+//   3. No duplicate reward claim                → @@unique(userId, rewardId, cycleKey)
+//   4. Append-only points ledger                → no UPDATE path; corrections are REVERSAL rows
+//   5. Audience result ≠ official show outcome  → stored in two separate columns
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================================================
+// Enums
+// ===========================================================================
+
+enum Role {
+  USER
+  MODERATOR
+  PRODUCER
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum ShowStatus {
+  UPCOMING
+  LIVE
+  PAUSED
+  ENDED
+}
+
+enum EpisodeStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  ARCHIVED
+}
+
+enum ContestantStatus {
+  ACTIVE
+  NOMINATED
+  IMMUNE
+  EVICTED
+  WINNER
+}
+
+enum ShowEventType {
+  TASK
+  ARGUMENT
+  NOMINATION
+  EVICTION
+  ENTRY
+  TWIST
+  ANNOUNCEMENT
+  KITCHEN
+  WEEKEND
+}
+
+enum PredictionStatus {
+  DRAFT
+  SCHEDULED
+  OPEN
+  CLOSED
+  RESOLVED
+  CANCELLED
+}
+
+enum ChallengeStatus {
+  DRAFT
+  SUBMITTED
+  MODERATION
+  APPROVED
+  REJECTED
+  COMMUNITY_VOTING
+  TOP_CHALLENGES
+  PRODUCER_REVIEW
+  SELECTED
+  EXECUTED
+  COMPLETED
+}
+
+enum ChallengeCategory {
+  PHYSICAL
+  MENTAL
+  CREATIVE
+  SOCIAL
+  FUNNY
+  TEAMWORK
+  ENDURANCE
+}
+
+enum ChallengeTargetType {
+  HOUSE
+  CONTESTANT
+}
+
+enum PerspectiveStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum PollStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+  PUBLISHED
+}
+
+enum RoundStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  PUBLISHED
+  CANCELLED
+}
+
+enum KitchenDecisionStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  FINALIZED
+}
+
+enum KitchenOptionKind {
+  MENU
+  QUANTITY
+  INGREDIENT
+  SPECIAL
+}
+
+enum WeekendRoundStatus {
+  OPEN
+  SUBMIT
+  MODERATION
+  SHORTLIST
+  PRODUCER_SELECTION
+  SELECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum WeekendParticipationType {
+  ASK_CONTESTANT
+  VIDEO_QUESTION
+  CHALLENGE_WINNER
+  MINI_GAME
+  VIRTUAL_AUDIENCE
+  SPECIAL_INTERACTION
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  IN_MODERATION
+  APPROVED
+  REJECTED
+  SHORTLISTED
+  SELECTED
+  COMPLETED
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ESCALATED
+}
+
+enum LedgerEntryType {
+  EARN
+  SPEND
+  REVERSAL
+  ADJUSTMENT
+}
+
+enum PointSourceType {
+  PREDICTION
+  POLL
+  CHALLENGE
+  PERSPECTIVE
+  NOMINATION
+  EVICTION
+  KITCHEN
+  WEEKEND
+  ACHIEVEMENT
+  REWARD_REDEMPTION
+  ADMIN
+}
+
+enum LeaderboardType {
+  DAILY
+  WEEKLY
+  SEASON
+  FRIENDS
+  COMMUNITY
+}
+
+enum RewardType {
+  DIGITAL_BADGE
+  PROFILE_ITEM
+  POINT_BOOST
+  SHOUTOUT
+  MERCH
+  EXPERIENCE
+}
+
+enum RedemptionStatus {
+  REQUESTED
+  APPROVED
+  FULFILLED
+  REJECTED
+  CANCELLED
+}
+
+enum NotificationType {
+  PREDICTION_CLOSING
+  PREDICTION_RESOLVED
+  POLL_STARTED
+  POLL_ENDED
+  CHALLENGE_APPROVED
+  CHALLENGE_SELECTED
+  REWARD_RECEIVED
+  LEADERBOARD_MOVEMENT
+  WEEKEND_OPEN
+  WEEKEND_SELECTION
+  NOMINATION_OPEN
+  EVICTION_OPEN
+  KITCHEN_DECISION
+  LIVE_EVENT
+  SYSTEM
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+}
+
+enum HeatTrend {
+  UP
+  DOWN
+  FLAT
+}
+
+enum VoteSource {
+  AUDIENCE
+  OFFICIAL
+}
+
+enum DuplicateSignalType {
+  EMAIL_ALIAS
+  DEVICE_REUSE
+  SESSION_OVERLAP
+  PHONE_REUSE
+  BEHAVIOURAL
+}
+
+// ===========================================================================
+// Identity & access
+// ===========================================================================
+
+model User {
+  id              String     @id @default(cuid())
+  /// Always stored lower-cased and trimmed; the unique index is the real
+  /// defence against a second account on the same address.
+  email           String     @unique
+  /// Canonical form with provider aliasing removed (dots and `+tags` for
+  /// providers that treat them as the same mailbox). Blocks the "just add a
+  /// plus sign" route to a second account. See `email-normalization.ts`.
+  emailNormalized String     @unique
+  emailVerifiedAt DateTime?
+  passwordHash    String
+  /// E.164. Optional, but once verified it becomes a hard uniqueness signal.
+  phone           String?    @unique
+  phoneVerifiedAt DateTime?
+  role            Role       @default(USER)
+  status          UserStatus @default(PENDING_VERIFICATION)
+  lastLoginAt     DateTime?
+  /// Populated by moderators, never automatically — a suspicion is not a ban.
+  flaggedAt       DateTime?
+  flagReason      String?
+  deletedAt       DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  profile                 UserProfile?
+  sessions                UserSession[]
+  devices                 UserDevice[]
+  emailTokens             EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  phoneVerifications      PhoneVerification[]
+  accountLinks            AccountLink[]
+  duplicateSignals        DuplicateSignal[]        @relation("SignalOwner")
+  relatedDuplicateSignals DuplicateSignal[]        @relation("SignalRelated")
+
+  predictionEntries  PredictionEntry[]
+  challenges         AudienceChallenge[]
+  challengeVotes     ChallengeVote[]
+  challengeReports   ChallengeReport[]
+  perspectiveVotes   PerspectiveVote[]
+  pollVotes          PollVote[]
+  nominationVotes    NominationVote[]
+  evictionVotes      EvictionVote[]
+  kitchenVotes       KitchenVote[]
+  weekendSubmissions WeekendSubmission[]
+  ledgerEntries      PointsLedger[]
+  redemptions        RewardRedemption[]
+  leaderboardEntries LeaderboardEntry[]
+  notifications      Notification[]
+  notificationPrefs  NotificationPreference[]
+  analyticsEvents    AnalyticsEvent[]
+  abuseReports       AbuseReport[]
+  auditLogs          AuditLog[]
+  adminActions       AdminAction[]
+  idempotencyKeys    IdempotencyKey[]
+
+  @@index([status, createdAt])
+  @@index([role])
+  @@index([deletedAt])
+}
+
+model UserProfile {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  displayName    String    @unique
+  avatarUrl      String?
+  bio            String?
+  country        String?
+  timezone       String    @default("UTC")
+  /// Denormalised cache of SUM(PointsLedger.delta). Only ever written inside the
+  /// same transaction that appends the ledger row it reflects.
+  pointsBalance  Int       @default(0)
+  lifetimePoints Int       @default(0)
+  currentStreak  Int       @default(0)
+  lastActiveAt   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([pointsBalance])
+}
+
+model UserSession {
+  id               String    @id @default(cuid())
+  userId           String
+  /// Only the hash is stored; the raw refresh token exists solely in the cookie.
+  refreshTokenHash String    @unique
+  /// The hash this session rotated away from. If a client presents *this*
+  /// token, the token was captured and replayed after the legitimate holder
+  /// already used it — the session family is destroyed on the spot.
+  previousTokenHash String?  @unique
+  userAgent        String?
+  /// Hashed, never the raw address — enough to correlate, not enough to track.
+  ipHash           String?
+  deviceId         String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  lastSeenAt       DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device UserDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+/// Coarse device correlation only. No canvas/WebGL/audio fingerprinting and no
+/// advertising identifiers — just a salted hash of a few request-level signals.
+model UserDevice {
+  id          String   @id @default(cuid())
+  userId      String
+  deviceHash  String
+  label       String?
+  userAgent   String?
+  trusted     Boolean  @default(false)
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions UserSession[]
+
+  @@unique([userId, deviceHash])
+  @@index([deviceHash])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  requestIp String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+}
+
+/// Phone OTP architecture placeholder: the table and flow exist, the transport
+/// is pluggable (`OTP_DRIVER`) and defaults to console output in development.
+model PhoneVerification {
+  id         String    @id @default(cuid())
+  userId     String
+  phone      String
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, verifiedAt])
+  @@index([phone])
+}
+
+/// OAuth architecture placeholder (Google). Enabled by configuration only.
+model AccountLink {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  email             String?
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+/// Advisory only: raises a duplicate-account suspicion for human review.
+/// Nothing in the application auto-bans on the strength of a signal.
+model DuplicateSignal {
+  id            String              @id @default(cuid())
+  userId        String
+  relatedUserId String?
+  type          DuplicateSignalType
+  score         Float               @default(0)
+  details       Json?
+  reviewedAt    DateTime?
+  reviewedById  String?
+  createdAt     DateTime            @default(now())
+
+  user        User  @relation("SignalOwner", fields: [userId], references: [id], onDelete: Cascade)
+  relatedUser User? @relation("SignalRelated", fields: [relatedUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([reviewedAt])
+}
+
+model RoleDefinition {
+  id          String   @id @default(cuid())
+  role        Role     @unique
+  label       String
+  description String?
+  createdAt   DateTime @default(now())
+
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  /// `domain.action`, e.g. `poll.close`, `points.reverse`.
+  key         String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+}
+
+/// Role inheritance is *materialised*: a higher role owns explicit rows for every
+/// lower-role permission, so a single indexed lookup answers any check.
+model RolePermission {
+  id               String @id @default(cuid())
+  roleDefinitionId String
+  permissionId     String
+
+  roleDefinition RoleDefinition @relation(fields: [roleDefinitionId], references: [id], onDelete: Cascade)
+  permission     Permission     @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleDefinitionId, permissionId])
+  @@index([permissionId])
+}
+
+// ===========================================================================
+// Show domain
+// ===========================================================================
+
+model Show {
+  id             String     @id @default(cuid())
+  slug           String     @unique
+  name           String
+  tagline        String?
+  description    String?
+  status         ShowStatus @default(UPCOMING)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  /// Fictional in-show currency symbol for the kitchen budget. Not real money.
+  currencySymbol String     @default("₹")
+  config         Json?
+  deletedAt      DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  seasons          Season[]
+  episodes         Episode[]
+  events           Event[]
+  contestants      Contestant[]
+  predictions      Prediction[]
+  challenges       AudienceChallenge[]
+  challengeCycles  ChallengeCycle[]
+  perspectives     AudiencePerspective[]
+  polls            LivePoll[]
+  nominationRounds NominationRound[]
+  evictionRounds   EvictionRound[]
+  kitchenBudgets   KitchenBudget[]
+  kitchenDecisions KitchenDecision[]
+  weekendRounds    WeekendParticipationRound[]
+  leaderboards     Leaderboard[]
+
+  @@index([status])
+}
+
+model Season {
+  id        String    @id @default(cuid())
+  showId    String
+  number    Int
+  name      String
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  show        Show         @relation(fields: [showId], references: [id], onDelete: Cascade)
+  episodes    Episode[]
+  contestants Contestant[]
+
+  @@unique([showId, number])
+}
+
+model Episode {
+  id        String        @id @default(cuid())
+  showId    String
+  seasonId  String?
+  number    Int
+  title     String
+  synopsis  String?
+  airsAt    DateTime
+  endedAt   DateTime?
+  status    EpisodeStatus @default(SCHEDULED)
+  isLive    Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  show   Show    @relation(fields: [showId], references: [id], onDelete: Cascade)
+  season Season? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+
+  events           Event[]
+  predictions      Prediction[]
+  polls            LivePoll[]
+  perspectives     AudiencePerspective[]
+  challengeCycles  ChallengeCycle[]
+  nominationRounds NominationRound[]
+  evictionRounds   EvictionRound[]
+  kitchenDecisions KitchenDecision[]
+  weekendRounds    WeekendParticipationRound[]
+
+  @@unique([showId, number])
+  @@index([status, airsAt])
+  @@index([isLive])
+}
+
+model Event {
+  id          String        @id @default(cuid())
+  showId      String
+  episodeId   String?
+  type        ShowEventType
+  title       String
+  description String?
+  occurredAt  DateTime
+  isMajor     Boolean       @default(false)
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  show    Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
+  episode Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+
+  contestants  EventContestant[]
+  predictions  Prediction[]
+  perspectives AudiencePerspective[]
+
+  @@index([showId, occurredAt])
+  @@index([episodeId, occurredAt])
+  @@index([type, occurredAt])
+}
+
+model EventContestant {
+  eventId      String
+  contestantId String
+  role         String?
+
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  contestant Contestant @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, contestantId])
+  @@index([contestantId])
+}
+
+/// A contestant is a person *on the show*. The Heat Meter measures contestants —
+/// never platform users, who are ranked separately on the leaderboards.
+model Contestant {
+  id            String           @id @default(cuid())
+  showId        String
+  seasonId      String?
+  slug          String
+  displayName   String
+  tagline       String?
+  bio           String?
+  avatarUrl     String?
+  age           Int?
+  occupation    String?
+  hometown      String?
+  status        ContestantStatus @default(ACTIVE)
+  enteredAt     DateTime?
+  exitedAt      DateTime?
+  /// Cached latest heat score; the authoritative history lives in the snapshots.
+  heatScore     Float            @default(50)
+  heatTrend     HeatTrend        @default(FLAT)
+  heatUpdatedAt DateTime?
+  deletedAt     DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  show   Show    @relation(fields: [showId], references: [id], onDelete: Cascade)
+  season Season? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+
+  metrics              ContestantMetric[]
+  heatSnapshots        ContestantHeatSnapshot[]
+  events               EventContestant[]
+  predictionOptions    PredictionOption[]
+  perspectiveOptions   PerspectiveOption[]
+  pollOptions          PollOption[]
+  challenges           AudienceChallenge[]
+  nominations          Nomination[]
+  nominationCandidates NominationCandidate[]
+  nominationVotes      NominationVote[]
+  evictionCandidates   EvictionCandidate[]
+  evictionVotes        EvictionVote[]
+  weekendSubmissions   WeekendSubmission[]
+
+  @@unique([showId, slug])
+  @@index([showId, status])
+  @@index([heatScore])
+  @@index([deletedAt])
+}
+
+/// Running counters that feed the heat formula. One row per (contestant, metric).
+model ContestantMetric {
+  id           String   @id @default(cuid())
+  contestantId String
+  metricKey    String
+  value        Float    @default(0)
+  windowStart  DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  contestant Contestant @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+
+  @@unique([contestantId, metricKey])
+  @@index([metricKey])
+}
+
+/// Immutable time series powering the 24h / 7d / season charts, and the audit
+/// trail an admin inspects to understand *why* a heat score is what it is.
+model ContestantHeatSnapshot {
+  id           String    @id @default(cuid())
+  contestantId String
+  heatScore    Float
+  trend        HeatTrend @default(FLAT)
+  /// Raw component values and the weights applied, so the number is reproducible.
+  inputs       Json
+  computedAt   DateTime  @default(now())
+
+  contestant Contestant @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+
+  @@index([contestantId, computedAt])
+  @@index([computedAt])
+}
+
+// ===========================================================================
+// Prediction game
+// ===========================================================================
+
+model Prediction {
+  id                  String           @id @default(cuid())
+  showId              String
+  episodeId           String?
+  eventId             String?
+  question            String
+  description         String?
+  status              PredictionStatus @default(DRAFT)
+  opensAt             DateTime?
+  closesAt            DateTime
+  resolvedAt          DateTime?
+  cancelledAt         DateTime?
+  participationPoints Int              @default(5)
+  rewardPoints        Int              @default(50)
+  createdById         String?
+  entryCount          Int              @default(0)
+  deletedAt           DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  show    Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
+  episode Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+  event   Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  options PredictionOption[]
+  entries PredictionEntry[]
+  result  PredictionResult?
+
+  @@index([showId, status])
+  @@index([status, closesAt])
+  @@index([episodeId])
+}
+
+model PredictionOption {
+  id           String  @id @default(cuid())
+  predictionId String
+  label        String
+  contestantId String?
+  sortOrder    Int     @default(0)
+  /// Cached tally; the authoritative count is COUNT(*) over PredictionEntry.
+  entryCount   Int     @default(0)
+
+  prediction Prediction  @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+  contestant Contestant? @relation(fields: [contestantId], references: [id], onDelete: SetNull)
+
+  entries         PredictionEntry[]
+  resultsAsWinner PredictionResult[] @relation("CorrectOption")
+
+  @@index([predictionId, sortOrder])
+}
+
+model PredictionEntry {
+  id           String    @id @default(cuid())
+  predictionId String
+  userId       String
+  optionId     String
+  /// Snapshot of correctness at resolution time, so re-resolution is auditable.
+  isCorrect    Boolean?
+  awardedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  prediction Prediction       @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option     PredictionOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  /// One prediction per user per question — enforced by the database.
+  @@unique([predictionId, userId])
+  @@index([userId, createdAt])
+  @@index([optionId])
+}
+
+model PredictionResult {
+  id              String   @id @default(cuid())
+  predictionId    String   @unique
+  correctOptionId String
+  resolvedById    String
+  resolvedAt      DateTime @default(now())
+  totalEntries    Int      @default(0)
+  correctEntries  Int      @default(0)
+  notes           String?
+
+  prediction    Prediction       @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+  correctOption PredictionOption @relation("CorrectOption", fields: [correctOptionId], references: [id], onDelete: Cascade)
+}
+
+// ===========================================================================
+// Audience challenges
+// ===========================================================================
+
+/// An episode-scoped voting cycle. Challenges are submitted into a cycle, the
+/// community votes, and the top N go to producer review.
+model ChallengeCycle {
+  id            String      @id @default(cuid())
+  showId        String
+  episodeId     String?
+  title         String
+  status        RoundStatus @default(DRAFT)
+  opensAt       DateTime
+  closesAt      DateTime
+  topN          Int         @default(3)
+  /// Ranking weights, e.g. {"votes":0.7,"recency":0.2,"authorTrust":0.1}
+  rankingConfig Json?
+  createdById   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  show    Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
+  episode Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+
+  submissions ChallengeSubmission[]
+  votes       ChallengeVote[]
+
+  @@index([showId, status])
+  @@index([status, closesAt])
+}
+
+model AudienceChallenge {
+  id                 String              @id @default(cuid())
+  showId             String
+  authorId           String
+  title              String
+  description        String
+  category           ChallengeCategory
+  targetType         ChallengeTargetType @default(HOUSE)
+  targetContestantId String?
+  status             ChallengeStatus     @default(DRAFT)
+  moderationStatus   ModerationStatus    @default(PENDING)
+  moderationNotes    String?
+  voteCount          Int                 @default(0)
+  reportCount        Int                 @default(0)
+  selectedAt         DateTime?
+  selectedById       String?
+  executedAt         DateTime?
+  completedAt        DateTime?
+  resultNotes        String?
+  deletedAt          DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  show             Show        @relation(fields: [showId], references: [id], onDelete: Cascade)
+  author           User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  targetContestant Contestant? @relation(fields: [targetContestantId], references: [id], onDelete: SetNull)
+
+  submissions ChallengeSubmission[]
+  votes       ChallengeVote[]
+  reports     ChallengeReport[]
+
+  @@index([showId, status])
+  @@index([authorId, createdAt])
+  @@index([status, voteCount])
+  @@index([moderationStatus])
+}
+
+model ChallengeSubmission {
+  id          String           @id @default(cuid())
+  challengeId String
+  cycleId     String
+  submittedAt DateTime         @default(now())
+  status      SubmissionStatus @default(SUBMITTED)
+  rank        Int?
+  score       Float            @default(0)
+
+  challenge AudienceChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  cycle     ChallengeCycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  /// A challenge enters a given cycle at most once.
+  @@unique([challengeId, cycleId])
+  @@index([cycleId, score])
+}
+
+model ChallengeVote {
+  id          String   @id @default(cuid())
+  challengeId String
+  userId      String
+  cycleId     String?
+  createdAt   DateTime @default(now())
+
+  challenge AudienceChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cycle     ChallengeCycle?   @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+
+  /// One vote per user per challenge.
+  @@unique([challengeId, userId])
+  @@index([userId, createdAt])
+}
+
+model ChallengeReport {
+  id          String           @id @default(cuid())
+  challengeId String
+  reporterId  String
+  reason      String
+  details     String?
+  status      ModerationStatus @default(PENDING)
+  resolvedAt  DateTime?
+  createdAt   DateTime         @default(now())
+
+  challenge AudienceChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  reporter  User              @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, reporterId])
+  @@index([status, createdAt])
+}
+
+// ===========================================================================
+// Audience perspective  (opinion about an event that already happened)
+// ===========================================================================
+
+model AudiencePerspective {
+  id          String            @id @default(cuid())
+  showId      String
+  episodeId   String?
+  eventId     String
+  question    String
+  description String?
+  status      PerspectiveStatus @default(DRAFT)
+  opensAt     DateTime?
+  closesAt    DateTime
+  totalVotes  Int               @default(0)
+  createdById String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  show    Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
+  episode Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  options PerspectiveOption[]
+  votes   PerspectiveVote[]
+
+  @@index([showId, status])
+  @@index([eventId])
+  @@index([status, closesAt])
+}
+
+model PerspectiveOption {
+  id            String  @id @default(cuid())
+  perspectiveId String
+  label         String
+  contestantId  String?
+  sortOrder     Int     @default(0)
+  voteCount     Int     @default(0)
+
+  perspective AudiencePerspective @relation(fields: [perspectiveId], references: [id], onDelete: Cascade)
+  contestant  Contestant?         @relation(fields: [contestantId], references: [id], onDelete: SetNull)
+
+  votes PerspectiveVote[]
+
+  @@index([perspectiveId, sortOrder])
+}
+
+model PerspectiveVote {
+  id            String   @id @default(cuid())
+  perspectiveId String
+  userId        String
+  optionId      String
+  createdAt     DateTime @default(now())
+
+  perspective AudiencePerspective @relation(fields: [perspectiveId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option      PerspectiveOption   @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@unique([perspectiveId, userId])
+  @@index([userId, createdAt])
+  @@index([optionId])
+}
+
+// ===========================================================================
+// Live polls  (real-time decision during the broadcast)
+// ===========================================================================
+
+model LivePoll {
+  id                  String     @id @default(cuid())
+  showId              String
+  episodeId           String?
+  question            String
+  description         String?
+  status              PollStatus @default(DRAFT)
+  opensAt             DateTime?
+  closesAt            DateTime?
+  durationSeconds     Int?
+  closedAt            DateTime?
+  publishedAt         DateTime?
+  totalVotes          Int        @default(0)
+  /// Monotonic counter attached to every broadcast so clients can drop
+  /// out-of-order realtime frames.
+  version             Int        @default(0)
+  participationPoints Int        @default(3)
+  createdById         String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  show    Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
+  episode Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+
+  options PollOption[]
+  votes   PollVote[]
+
+  @@index([showId, status])
+  @@index([status, closesAt])
+  @@index([episodeId, status])
+}
+
+model PollOption {
+  id           String  @id @default(cuid())
+  pollId       String
+  label        String
+  contestantId String?
+  sortOrder    Int     @default(0)
+  voteCount    Int     @default(0)
+
+  poll       LivePoll    @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  contestant Contestant? @relation(fields: [contestantId], references: [id], onDelete: SetNull)
+
+  votes PollVote[]
+
+  @@index([pollId, sortOrder])
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  pollId    String
+  userId    String
+  optionId  String
+  createdAt DateTime @default(now())
+
+  poll   LivePoll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+  @@index([pollId, createdAt])
+  @@index([userId, createdAt])
+  @@index([optionId])
+}
+
+// ===========================================================================
+// Nomination & eviction
+// ===========================================================================
+
+model NominationRound {
+  id                    String      @id @default(cuid())
+  showId                String
+  episodeId             String?
+  title                 String
+  description           String?
+  status                RoundStatus @default(DRAFT)
+  opensAt               DateTime
+  closesAt              DateTime
+  maxVotesPerUser       Int         @default(1)
+  /// Optional per-contestant multipliers, e.g. {"contestantId": 1.5}
+  weighting             Json?
+  totalVotes            Int         @default(0)
+  /// What the audience on this platform decided.
+  audienceResult        Json?
+  /// What the production team published as the official outcome — deliberately a
+  /// separate column so the two can never be conflated.
+  officialOutcome       Json?
+  officialPublishedAt   DateTime?
+  officialPublishedById String?
+  publishedAt           DateTime?
+  createdById           String?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  show    Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
+  episode Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+
+  candidates  NominationCandidate[]
+  nominations Nomination[]
+  votes       NominationVote[]
+
+  @@index([showId, status])
+  @@index([status, closesAt])
+}
+
+model NominationCandidate {
+  id            String  @id @default(cuid())
+  roundId       String
+  contestantId  String
+  eligible      Boolean @default(true)
+  voteCount     Int     @default(0)
+  weightedScore Float   @default(0)
+
+  round      NominationRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  contestant Contestant      @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, contestantId])
+  @@index([roundId, voteCount])
+}
+
+/// The outcome record: which contestants ended up nominated, and by whom —
+/// the audience tally or the show's official decision.
+model Nomination {
+  id           String     @id @default(cuid())
+  roundId      String
+  contestantId String
+  source       VoteSource @default(AUDIENCE)
+  position     Int?
+  notes        String?
+  createdById  String?
+  createdAt    DateTime   @default(now())
+
+  round      NominationRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  contestant Contestant      @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, contestantId, source])
+  @@index([roundId, source])
+}
+
+model NominationVote {
+  id           String   @id @default(cuid())
+  roundId      String
+  userId       String
+  contestantId String
+  weight       Float    @default(1)
+  createdAt    DateTime @default(now())
+
+  round      NominationRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contestant Contestant      @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+
+  /// A user may spend several votes in a round but never twice on the same
+  /// contestant; the per-round total is capped by `maxVotesPerUser` in a
+  /// serialisable transaction.
+  @@unique([roundId, userId, contestantId])
+  @@index([roundId, userId])
+  @@index([contestantId])
+}
+
+model EvictionRound {
+  id                    String      @id @default(cuid())
+  showId                String
+  episodeId             String?
+  title                 String
+  description           String?
+  status                RoundStatus @default(DRAFT)
+  opensAt               DateTime
+  closesAt              DateTime
+  maxVotesPerUser       Int         @default(1)
+  /// SAVE (vote to keep) or EVICT (vote to remove) — configured per show.
+  voteMeaning           String      @default("SAVE")
+  weighting             Json?
+  totalVotes            Int         @default(0)
+  audienceResult        Json?
+  officialOutcome       Json?
+  officialPublishedAt   DateTime?
+  officialPublishedById String?
+  publishedAt           DateTime?
+  createdById           String?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  show    Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
+  episode Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+
+  candidates EvictionCandidate[]
+  votes      EvictionVote[]
+
+  @@index([showId, status])
+  @@index([status, closesAt])
+}
+
+model EvictionCandidate {
+  id            String  @id @default(cuid())
+  roundId       String
+  contestantId  String
+  eligible      Boolean @default(true)
+  voteCount     Int     @default(0)
+  weightedScore Float   @default(0)
+
+  round      EvictionRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  contestant Contestant    @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, contestantId])
+  @@index([roundId, voteCount])
+}
+
+model EvictionVote {
+  id           String   @id @default(cuid())
+  roundId      String
+  userId       String
+  contestantId String
+  weight       Float    @default(1)
+  createdAt    DateTime @default(now())
+
+  round      EvictionRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contestant Contestant    @relation(fields: [contestantId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, userId, contestantId])
+  @@index([roundId, userId])
+  @@index([contestantId])
+}
+
+// ===========================================================================
+// Kitchen control
+// ===========================================================================
+
+/// A fictional in-show budget. Not money, not a wallet, never connected to
+/// payments. Users influence how it is spent; they can never edit it.
+model KitchenBudget {
+  id             String   @id @default(cuid())
+  showId         String
+  label          String
+  totalUnits     Int
+  spentUnits     Int      @default(0)
+  currencySymbol String   @default("₹")
+  periodStart    DateTime
+  periodEnd      DateTime
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  show      Show              @relation(fields: [showId], references: [id], onDelete: Cascade)
+  decisions KitchenDecision[]
+
+  @@index([showId, periodStart])
+}
+
+model KitchenDecision {
+  id            String                @id @default(cuid())
+  showId        String
+  episodeId     String?
+  budgetId      String
+  title         String
+  question      String
+  status        KitchenDecisionStatus @default(DRAFT)
+  opensAt       DateTime
+  closesAt      DateTime
+  /// How many options one user may pick in this decision.
+  maxSelections Int                   @default(1)
+  /// Hard ceiling on the quantity the resolved decision may buy.
+  maxQuantity   Int?
+  weighting     Json?
+  totalVotes    Int                   @default(0)
+  /// Server-computed outcome: chosen options, their cost, remaining budget.
+  result        Json?
+  resultCost    Int?
+  finalizedAt   DateTime?
+  finalizedById String?
+  createdById   String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  show    Show          @relation(fields: [showId], references: [id], onDelete: Cascade)
+  episode Episode?      @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+  budget  KitchenBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+
+  options KitchenOption[]
+  votes   KitchenVote[]
+
+  @@index([showId, status])
+  @@index([status, closesAt])
+}
+
+model KitchenOption {
+  id         String            @id @default(cuid())
+  decisionId String
+  kind       KitchenOptionKind @default(MENU)
+  label      String
+  /// Cost in budget units. Server-side only — the client never sends a price.
+  unitCost   Int               @default(0)
+  quantity   Int?
+  unit       String?
+  sortOrder  Int               @default(0)
+  voteCount  Int               @default(0)
+
+  decision KitchenDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  votes KitchenVote[]
+
+  @@index([decisionId, sortOrder])
+}
+
+model KitchenVote {
+  id         String   @id @default(cuid())
+  decisionId String
+  userId     String
+  optionId   String
+  createdAt  DateTime @default(now())
+
+  decision KitchenDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option   KitchenOption   @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  /// One vote per user per option; the number of options a user may select is
+  /// capped by `KitchenDecision.maxSelections` inside the voting transaction.
+  @@unique([decisionId, userId, optionId])
+  @@index([decisionId, userId])
+  @@index([optionId])
+}
+
+// ===========================================================================
+// Weekend participation
+// ===========================================================================
+
+model WeekendParticipationRound {
+  id                   String                     @id @default(cuid())
+  showId               String
+  episodeId            String?
+  title                String
+  description          String?
+  status               WeekendRoundStatus         @default(OPEN)
+  participationTypes   WeekendParticipationType[]
+  opensAt              DateTime
+  submissionDeadline   DateTime
+  closesAt             DateTime
+  shortlistSize        Int                        @default(10)
+  selectionCount       Int                        @default(3)
+  /// Eligibility gate, e.g. {"minPoints":100,"minActivities":5}
+  eligibilityConfig    Json?
+  /// Physical/appearance rewards are OFF unless authorised production staff
+  /// enable them for a specific round, together with the disclaimer text.
+  allowPhysicalRewards Boolean                    @default(false)
+  rewardDisclaimer     String?
+  enabledById          String?
+  createdById          String?
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+
+  show    Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
+  episode Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+
+  questions   WeekendQuestion[]
+  submissions WeekendSubmission[]
+  selections  WeekendSelection[]
+
+  @@index([showId, status])
+  @@index([status, submissionDeadline])
+}
+
+model WeekendQuestion {
+  id        String                   @id @default(cuid())
+  roundId   String
+  prompt    String
+  type      WeekendParticipationType @default(ASK_CONTESTANT)
+  sortOrder Int                      @default(0)
+  required  Boolean                  @default(false)
+  maxLength Int                      @default(800)
+
+  round WeekendParticipationRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  submissions WeekendSubmission[]
+
+  @@index([roundId, sortOrder])
+}
+
+model WeekendSubmission {
+  id                String                   @id @default(cuid())
+  roundId           String
+  questionId        String?
+  userId            String
+  contestantId      String?
+  participationType WeekendParticipationType
+  content           String
+  mediaUrl          String?
+  status            SubmissionStatus         @default(SUBMITTED)
+  moderationStatus  ModerationStatus         @default(PENDING)
+  moderationNotes   String?
+  score             Float                    @default(0)
+  shortlistedAt     DateTime?
+  deletedAt         DateTime?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  round      WeekendParticipationRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  question   WeekendQuestion?          @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  user       User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contestant Contestant?               @relation(fields: [contestantId], references: [id], onDelete: SetNull)
+
+  selection WeekendSelection?
+
+  /// One submission per user per participation type per round.
+  @@unique([roundId, userId, participationType])
+  @@index([roundId, status])
+  @@index([userId, createdAt])
+  @@index([moderationStatus])
+}
+
+model WeekendSelection {
+  id           String    @id @default(cuid())
+  roundId      String
+  submissionId String    @unique
+  position     Int       @default(1)
+  selectedById String
+  selectedAt   DateTime  @default(now())
+  completedAt  DateTime?
+  notes        String?
+
+  round      WeekendParticipationRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  submission WeekendSubmission         @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, position])
+  @@index([roundId])
+}
+
+// ===========================================================================
+// Points & rewards
+// ===========================================================================
+
+/// Configurable point values. Feature modules never hard-code an amount.
+model PointsRule {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  points      Int
+  active      Boolean  @default(true)
+  description String?
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+/// APPEND-ONLY. There is no update or delete path in the application layer.
+/// A mistake is corrected by inserting a REVERSAL row that references the
+/// original entry — the original is never touched.
+model PointsLedger {
+  id              String          @id @default(cuid())
+  userId          String
+  delta           Int
+  /// Balance after this entry, computed inside the same transaction. Makes the
+  /// ledger self-verifying: replaying deltas must reproduce every balanceAfter.
+  balanceAfter    Int
+  entryType       LedgerEntryType @default(EARN)
+  sourceType      PointSourceType
+  /// Id of the poll/prediction/challenge/… that caused the entry.
+  sourceId        String
+  /// Distinguishes several awards from one source, e.g. participation vs correct.
+  reason          String
+  metadata        Json?
+  reversedEntryId String?
+  createdById     String?
+  createdAt       DateTime        @default(now())
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reversedEntry PointsLedger?  @relation("Reversal", fields: [reversedEntryId], references: [id], onDelete: SetNull)
+  reversals     PointsLedger[] @relation("Reversal")
+
+  /// Idempotency: replaying an award job can never credit the same user twice
+  /// for the same reason from the same source.
+  @@unique([userId, sourceType, sourceId, reason])
+  @@index([userId, createdAt])
+  @@index([sourceType, sourceId])
+  @@index([createdAt])
+}
+
+model Reward {
+  id                         String     @id @default(cuid())
+  code                       String     @unique
+  name                       String
+  description                String?
+  type                       RewardType @default(DIGITAL_BADGE)
+  costPoints                 Int        @default(0)
+  stock                      Int?
+  claimed                    Int        @default(0)
+  active                     Boolean    @default(true)
+  requiresApproval           Boolean    @default(false)
+  /// One-per-user rewards resolve to the cycle key "once"; repeatable rewards
+  /// use a period key (e.g. "2026-W32"), which the unique index then enforces.
+  oncePerUser                Boolean    @default(true)
+  /// Physical/experience rewards must be explicitly authorised by production.
+  requiresProductionApproval Boolean    @default(false)
+  disclaimer                 String?
+  availableFrom              DateTime?
+  availableUntil             DateTime?
+  metadata                   Json?
+  deletedAt                  DateTime?
+  createdAt                  DateTime   @default(now())
+  updatedAt                  DateTime   @updatedAt
+
+  redemptions RewardRedemption[]
+
+  @@index([active, type])
+}
+
+model RewardRedemption {
+  id            String           @id @default(cuid())
+  rewardId      String
+  userId        String
+  status        RedemptionStatus @default(REQUESTED)
+  costPoints    Int
+  /// "once" for one-per-user rewards, otherwise a period key.
+  cycleKey      String           @default("once")
+  ledgerEntryId String?
+  decidedById   String?
+  decidedAt     DateTime?
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  reward Reward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// No duplicate reward claims — enforced by the database.
+  @@unique([userId, rewardId, cycleKey])
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+// ===========================================================================
+// Leaderboards
+// ===========================================================================
+
+model Leaderboard {
+  id         String          @id @default(cuid())
+  type       LeaderboardType
+  /// "2026-08-09" (daily), "2026-W32" (weekly), "season-1", "community"
+  periodKey  String
+  showId     String?
+  computedAt DateTime        @default(now())
+  entryCount Int             @default(0)
+  createdAt  DateTime        @default(now())
+
+  show    Show?              @relation(fields: [showId], references: [id], onDelete: Cascade)
+  entries LeaderboardEntry[]
+
+  @@unique([type, periodKey, showId])
+  @@index([type, computedAt])
+}
+
+model LeaderboardEntry {
+  id            String    @id @default(cuid())
+  leaderboardId String
+  userId        String
+  rank          Int
+  points        Int
+  /// Earlier first-activity wins a tie; stored so ordering is deterministic.
+  tieBreaker    DateTime?
+  previousRank  Int?
+
+  leaderboard Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([leaderboardId, userId])
+  @@index([leaderboardId, rank])
+  @@index([userId])
+}
+
+// ===========================================================================
+// Notifications
+// ===========================================================================
+
+model Notification {
+  id        String              @id @default(cuid())
+  userId    String
+  type      NotificationType
+  channel   NotificationChannel @default(IN_APP)
+  title     String
+  body      String
+  data      Json?
+  /// Collapses repeat sends of the same thing — the anti-spam guarantee.
+  dedupeKey String?
+  readAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, readAt, createdAt])
+  @@index([createdAt])
+}
+
+model NotificationPreference {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  inApp     Boolean          @default(true)
+  email     Boolean          @default(false)
+  push      Boolean          @default(false)
+  updatedAt DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+}
+
+// ===========================================================================
+// Analytics
+// ===========================================================================
+
+/// Minimal-PII product analytics: an event name, an optional user id, and
+/// non-identifying properties. No IP addresses, no advertising identifiers.
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  name        String
+  userId      String?
+  anonymousId String?
+  sessionId   String?
+  showId      String?
+  properties  Json?
+  occurredAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([name, occurredAt])
+  @@index([userId, occurredAt])
+  @@index([occurredAt])
+}
+
+model AnalyticsDailyRollup {
+  id         String   @id @default(cuid())
+  date       DateTime
+  metric     String
+  value      Float
+  computedAt DateTime @default(now())
+
+  @@unique([date, metric])
+  @@index([metric, date])
+}
+
+// ===========================================================================
+// Governance
+// ===========================================================================
+
+/// Operator intent: "who pressed which button".
+model AdminAction {
+  id         String   @id @default(cuid())
+  actorId    String
+  action     String
+  entityType String
+  entityId   String?
+  payload    Json?
+  createdAt  DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+}
+
+/// Immutable diff trail written inside the same transaction as the mutation.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorRole  Role?
+  action     String
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ipHash     String?
+  userAgent  String?
+  requestId  String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+}
+
+model AbuseReport {
+  id           String           @id @default(cuid())
+  reporterId   String
+  targetType   String
+  targetId     String
+  reason       String
+  details      String?
+  status       ModerationStatus @default(PENDING)
+  resolvedById String?
+  resolvedAt   DateTime?
+  createdAt    DateTime         @default(now())
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+model ModerationDecision {
+  id          String           @id @default(cuid())
+  moderatorId String
+  targetType  String
+  targetId    String
+  decision    ModerationStatus
+  reason      String?
+  createdAt   DateTime         @default(now())
+
+  @@index([targetType, targetId, createdAt])
+  @@index([moderatorId, createdAt])
+}
+
+/// Stores the outcome of a point-bearing or vote-bearing request so a retry
+/// returns the original response instead of applying the action twice.
+model IdempotencyKey {
+  id             String    @id @default(cuid())
+  key            String
+  userId         String
+  endpoint       String
+  requestHash    String
+  responseStatus Int?
+  responseBody   Json?
+  completedAt    DateTime?
+  expiresAt      DateTime
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint, key])
+  @@index([expiresAt])
+}

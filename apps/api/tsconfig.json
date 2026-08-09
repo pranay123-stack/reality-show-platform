@@ -1,0 +1,13 @@
+{
+  "extends": "@reality/config/tsconfig/node.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "baseUrl": ".",
+    "outDir": "dist",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "prisma/**/*.ts", "*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

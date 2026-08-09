@@ -1,0 +1,37 @@
+{
+  "name": "reality-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Interactive reality-show audience platform (not a fantasy league)",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:infra": "docker compose up -d",
+    "dev:infra:down": "docker compose down",
+    "dev:infra:logs": "docker compose logs -f",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:e2e": "pnpm --filter @reality/web test:e2e",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md,css,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,md,css,yml,yaml}\"",
+    "setup:env": "node scripts/setup-env.mjs",
+    "db:generate": "pnpm --filter @reality/api db:generate",
+    "db:migrate": "pnpm --filter @reality/api db:migrate",
+    "db:deploy": "pnpm --filter @reality/api db:deploy",
+    "db:seed": "pnpm --filter @reality/api db:seed",
+    "db:reset": "pnpm --filter @reality/api db:reset",
+    "db:studio": "pnpm --filter @reality/api db:studio",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "prettier": "3.4.2",
+    "turbo": "2.10.9",
+    "typescript": "5.9.3"
+  }
+}

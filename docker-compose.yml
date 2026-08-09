@@ -1,0 +1,39 @@
+# Development infrastructure only (application runs on the host via `pnpm dev`).
+# Production stack lives in docker-compose.prod.yml (Phase 23).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: reality_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-reality}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reality}
+      POSTGRES_DB: ${POSTGRES_DB:-reality}
+    ports:
+      - '${POSTGRES_PORT:-5442}:5432'
+    volumes:
+      - reality_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-reality} -d ${POSTGRES_DB:-reality}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: reality_redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    ports:
+      - '${REDIS_PORT:-6389}:6379'
+    volumes:
+      - reality_redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  reality_pgdata:
+  reality_redisdata:
