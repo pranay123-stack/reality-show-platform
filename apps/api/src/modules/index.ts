@@ -13,8 +13,9 @@ import { evictionRoutes, nominationRoutes } from './rounds/rounds.routes.js';
 import { predictionRoutes } from './predictions/predictions.routes.js';
 import { showRoutes } from './show/show.routes.js';
 import { userRoutes } from './users/users.routes.js';
+import { weekendRoutes } from './weekend/weekend.routes.js';
 
-const MODULES = ['health', 'auth', 'users', 'show', 'dashboard', 'contestants', 'predictions', 'challenges', 'perspectives', 'polls', 'nominations', 'evictions', 'kitchen'];
+const MODULES = ['health', 'auth', 'users', 'show', 'dashboard', 'contestants', 'predictions', 'challenges', 'perspectives', 'polls', 'nominations', 'evictions', 'kitchen', 'weekend'];
 
 /**
  * Single registration point for every feature module.
@@ -41,6 +42,7 @@ export async function registerModules(app: FastifyInstance): Promise<void> {
       await api.register(nominationRoutes, { prefix: '/nominations' });
       await api.register(evictionRoutes, { prefix: '/evictions' });
       await api.register(kitchenRoutes, { prefix: '/kitchen' });
+      await api.register(weekendRoutes, { prefix: '/weekend' });
     },
     { prefix: API_PREFIX },
   );

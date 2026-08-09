@@ -1046,3 +1046,115 @@ All eight required integration scenarios, and more:
 One integration test initially failed because its setup produced a 1–1 tie, resolved by the
 producer's option ordering rather than by the quantity ceiling it claimed to test. The setup now
 gives the intended option a clear lead, with a comment explaining why.
+
+---
+
+## Phase 13 — Weekend Participation
+
+### No migration needed
+
+`WeekendParticipationRound`, `WeekendQuestion`, `WeekendSubmission` and `WeekendSelection` were
+already modelled in Phase 2, including `participationTypes[]`, `eligibilityConfig`,
+`allowPhysicalRewards`, `rewardDisclaimer` and `enabledById`. This phase is service, routes, tests
+and UI on top of an unchanged schema.
+
+### The funnel
+
+```
+OPEN → SUBMIT → MODERATION → SHORTLIST → PRODUCER_SELECTION → SELECTED → COMPLETED
+```
+
+`CANCELLED` is reachable from any non-terminal state. Every transition is checked against an
+allow-list, and the funnel has no back door:
+
+- **Nothing is shortlisted that a moderator has not approved** — attempting it returns
+  `INVALID_STATE_TRANSITION` and names the offending entries.
+- **Nothing is selected that was not shortlisted.**
+- Re-shortlisting **replaces** the previous set rather than accumulating, so the shortlist always
+  reflects the latest decision.
+
+### Eligibility is earned, and explained
+
+`evaluateEligibility` is pure — the caller gathers the numbers, the function decides what they mean.
+That split is what makes the rules both unit-testable and explainable to a user.
+
+The interesting requirement was "legitimate engagement". Points alone are a weak proxy: somebody can
+sit on one feature and farm it. So eligibility also counts **how many different features** a person
+has actually used, gathered from the vote and submission tables rather than from points — a producer
+retuning a point value cannot accidentally change who qualifies.
+
+A test makes the distinction concrete: an account with 10,000 points and 400 actions from a *single*
+feature is refused, while a modest account with 120 points across *four* features passes.
+
+The API returns every requirement with its current value against the target, so the UI can show the
+gap. A bare "not eligible" tells a person nothing about what to do next.
+
+### No unauthorised promises
+
+The brief is explicit: do not promise physical appearances, celebrity meetings or house tours unless
+authorised production staff have configured them. Enforced at four independent points:
+
+1. **Creating a round cannot offer an in-person type.** `VIRTUAL_AUDIENCE` at creation → 403.
+2. **Adding one later requires the round to already be authorised** → 403 otherwise.
+3. **Authorising takes its own endpoint, its own permission (`weekend.physical_rewards`), an
+   explicit acknowledgement flag and a disclaimer of at least 20 characters.** Missing either the
+   acknowledgement or the disclaimer → 400. Who authorised it is recorded in `enabledById`.
+4. **`describeRewards` is the single place rewards are described.** While physical rewards are off,
+   the standard "no physical appearance, house visit or meeting is offered" wording always wins —
+   *including over whatever a producer may have typed into the disclaimer field*. A test asserts
+   that a disclaimer reading "Winners will be flown to the house to meet the contestants!" is not
+   shown while the flag is off.
+
+### Moderation
+
+Reuses `screenContent` from the challenges module — abuse blocked outright, spam signals flagged for
+a human — so both user-generated surfaces behave identically.
+
+Authors see the **outcome** of moderation (`PENDING` / `APPROVED` / `REJECTED`) and never a
+moderator's notes; an escalated entry simply reads as still pending. A test posts an internal note
+("user has prior warnings") and asserts it appears nowhere in the author's payload.
+
+Withdrawal is a soft delete, so the moderation trail survives it, and a selected entry can no longer
+be withdrawn.
+
+### Points through the ledger
+
+submission 15 · shortlisted 60 · selected 250 — all via `awardPoints`, all idempotent. Shortlist and
+selection awards carry the submission id in their reason, so re-running either step cannot pay twice.
+
+### Results actually observed
+
+**51 new tests** — 18 unit (`eligibility.ts`) + 33 integration. Full suite: **331 API tests** across
+20 files, plus 7 shared.
+
+Coverage includes: the full seven-step funnel end to end paying 325 points in three correctly-named
+ledger entries; steps that cannot be skipped; shortlisting unmoderated entries refused; selecting
+un-shortlisted entries refused; `shortlistSize` and `selectionCount` honoured; eligibility refused
+with reasons; the single-feature farmer refused; duplicate entry of the same type refused without
+paying twice; a different type from the same user allowed; a type the round does not offer refused;
+entries after the deadline and after the round moves on refused; abusive content refused; the
+question's own length limit enforced; withdrawal allowed before the deadline and refused for someone
+else's entry; moderator notes never leaking; moderation decisions and audit rows written; all four
+physical-reward gates; and every operator route refused to users, moderators and anonymous callers.
+
+### Live verification
+
+| Check | Result |
+| --- | --- |
+| Anonymous `GET /weekend/current` | round returned, `inPersonOpportunity: false`, disclaimer present, eligibility says "sign in" |
+| Engaged user (`viewer1`) | points 2024/100, activities 7/3, 4 distinct features → **eligible** |
+| Submit an entry | `SUBMITTED` / `PENDING`, +15 points, `ASK_CONTESTANT` removed from available types |
+| Duplicate same type | 409 |
+| Low-engagement user (`viewer6`) | not eligible — *"Take part 3 more times."*; submit → `NOT_ELIGIBLE` |
+| Enable physical rewards without acknowledgement | **400** |
+| Add `VIRTUAL_AUDIENCE` to an unauthorised round | **403** |
+| `/weekend` at 1440/834/390 | 0 px horizontal overflow at every breakpoint; funnel tracker, eligibility panel and rewards panel all render, with the "no physical appearance" disclaimer visible |
+
+`pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 338 passed · `pnpm build` 4/4.
+
+### Note
+
+One test initially failed on a balance assertion that forgot the 500 starting points the engagement
+helper seeds. It now asserts the **ledger delta** (325) as the primary check, with the cached balance
+checked as `500 + 325` — a better test than the one I first wrote, since it proves the points moved
+through the ledger rather than just landing in a column.
