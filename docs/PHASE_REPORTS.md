@@ -666,3 +666,63 @@ The Phase 5 fix for the duplicated episode title (`Episode 12 · Episode 12 — 
 had never reached the database: the seed's `upsert` set `title` only in its `create` branch, so
 re-seeding silently kept the stale value. The upsert now updates the title too, and a re-seed
 corrected the live data — confirmed via `GET /show/live`.
+
+---
+
+## Phase 9 — Audience Perspective
+
+### Kept genuinely distinct from Live Polls
+
+The brief warns against confusing the two, so the distinction is enforced structurally, not just
+described in copy:
+
+| | Audience Perspective | Live Poll (Phase 10) |
+| --- | --- | --- |
+| Subject | an event that already happened | a decision happening now |
+| Anchor | **always** tied to an `Event` — creation 404s without a real one | never event-anchored |
+| Duration | hours or days | seconds or minutes |
+| Results while open | **visible** | hidden until you vote |
+| Transport | HTTP | WebSocket push |
+
+The results-visibility rule is the substantive difference. A live poll hides its tally because the
+tally can change the outcome; a perspective asks what people made of a fixed past event, so showing
+the split informs rather than distorts. The UI states this in plain language on the page.
+
+### API added
+
+`GET /perspectives?scope=open|closed|mine|all&eventId=&contestantId=` ·
+`GET /perspectives/analytics` · `GET /perspectives/:id` ·
+`POST /perspectives/:id/vote` (auth + verified email) ·
+`POST /perspectives/admin` · `POST /perspectives/admin/:id/{open,close}`
+
+`/analytics` is registered before `/:id` so the literal path is never parsed as an id.
+
+### Historical analytics
+
+`getPerspectiveAnalytics()` reports totals, average participation, per-contestant support rate, the
+ten most recent verdicts with their winning margin, and a **consensus split** bucketing each result
+by how decisively it finished (≥40 points decisive, ≥15 split, otherwise contested). A 90/10 result
+says something very different about the audience than 51/49, and a single average would hide that.
+
+### Results actually observed
+
+**17 new integration tests**, all passing. Full suite: **173 API tests** across 14 files, plus 7 shared.
+
+Coverage: vote recorded with the split and points updated; **duplicate vote refused** with no
+second ledger entry; vote after the deadline refused even while the status still reads `OPEN`;
+foreign option rejected; anonymous vote rejected; the split visible to a non-voter while open;
+no leader reported on a dead heat; the anchoring event and its contestants returned; filtering by
+event and by contestant; `scope=mine`; analytics totals, per-contestant support rate and margin;
+analytics not dividing by zero on an empty set; a near-even result classified as contested rather
+than decisive; creation and lifecycle refused to ordinary users; the draft → open → close path with
+three audit rows; creation refused without a real event; opening refused when the close time has
+already passed.
+
+`pnpm typecheck` 7/7 · `pnpm lint` 5/5 · `pnpm build` 4/4.
+
+### Web added
+
+`/perspectives` with Open / Past / Mine tabs. Each card leads with the event it is about (type,
+title, description, links to the contestants involved), then the question, a countdown, and either
+answer buttons or the live split. Below the list sits the historical analytics panel: questions
+asked, answers given, how many verdicts were clear-cut, and who the audience has sided with.

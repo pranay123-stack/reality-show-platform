@@ -6,11 +6,12 @@ import { challengeRoutes } from './challenges/challenges.routes.js';
 import { contestantRoutes } from './contestants/contestants.routes.js';
 import { dashboardRoutes } from './dashboard/dashboard.routes.js';
 import { healthRoutes } from './health/health.routes.js';
+import { perspectiveRoutes } from './perspectives/perspectives.routes.js';
 import { predictionRoutes } from './predictions/predictions.routes.js';
 import { showRoutes } from './show/show.routes.js';
 import { userRoutes } from './users/users.routes.js';
 
-const MODULES = ['health', 'auth', 'users', 'show', 'dashboard', 'contestants', 'predictions', 'challenges'];
+const MODULES = ['health', 'auth', 'users', 'show', 'dashboard', 'contestants', 'predictions', 'challenges', 'perspectives'];
 
 /**
  * Single registration point for every feature module.
@@ -32,6 +33,7 @@ export async function registerModules(app: FastifyInstance): Promise<void> {
       await api.register(contestantRoutes, { prefix: '/contestants' });
       await api.register(predictionRoutes, { prefix: '/predictions' });
       await api.register(challengeRoutes, { prefix: '/challenges' });
+      await api.register(perspectiveRoutes, { prefix: '/perspectives' });
     },
     { prefix: API_PREFIX },
   );
