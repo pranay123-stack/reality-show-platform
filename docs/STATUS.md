@@ -1,6 +1,6 @@
 # Build status
 
-**Last updated:** end of Phase 15.
+**Last updated:** end of Phase 16.
 
 Everything below was executed and observed, not assumed. Per-phase detail is in
 [`PHASE_REPORTS.md`](PHASE_REPORTS.md); the design is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -13,15 +13,15 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | --- | --- | --- |
 | Typecheck | `pnpm typecheck` | 7/7 packages |
 | Lint | `pnpm lint` | 5/5 packages, 0 warnings |
-| Tests | `pnpm test` | **483 passed** (476 API across 25 files, 7 shared) |
+| Tests | `pnpm test` | **531 passed** (524 API across 27 files, 7 shared) |
 | Build | `pnpm build` | 4/4 (API bundle + Next production build) |
-| Migrations | `prisma migrate deploy` | 7 migrations, applied cleanly, no drift |
+| Migrations | `prisma migrate deploy` | 8 migrations, applied cleanly, no drift |
 | Seed | `pnpm db:seed` | idempotent, completes |
 | Runtime | API + web started, flows exercised via curl and headless Chromium | see below |
 
 ---
 
-## Phases complete: 0 – 15
+## Phases complete: 0 – 16
 
 | Phase | Delivered |
 | --- | --- |
@@ -41,6 +41,7 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | **13** | Weekend Participation: seven-step funnel gated on human moderation, eligibility earned across *different* features, and a four-point gate keeping in-person rewards off unless production authorises them |
 | **14** | Reward Economy: catalogue, inventory, eligibility rules and a validated redemption lifecycle. Redemption is one transaction that claims stock atomically before debiting the ledger — 100 concurrent redeemers against 10 units yield exactly 10 winners. Physical and experience rewards carry the same authorisation gate as weekend participation |
 | **15** | Leaderboard System: `PointsLedger` → idempotent projector → Redis sorted sets, never an aggregate query at request time. Daily / weekly / season windows on a configurable board timezone, plus friends and community boards. Competition ranking with tie handling, rank movement from snapshots, privacy controls, and admin rebuild / snapshot / freeze / export / inspect. 1000 simultaneous events lose no updates |
+| **16** | Notification System: features emit domain events to a durable outbox; the notification module subscribes. No feature imports it. Deduplicated per (event, entity, user), preference-respecting, template-driven, with IN_APP delivering and EMAIL/PUSH declared as real providers that report themselves unconfigured. Admin health, failure inspection and retry. 1000 identical events yield one notification per user |
 
 ### Things worth knowing
 
@@ -64,17 +65,24 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
   which also means the dashboard rank no longer moves when someone redeems something.
 - **Period boundaries use `LEADERBOARD_TIMEZONE`** (default UTC), not the server's zone and not the
   viewer's — a shared ranking needs one agreed "today".
-- Remaining 404 routes: `/notifications`, `/admin` (the `/admin/challenges` moderation queue,
-  `/admin/rewards` and `/admin/leaderboard` dashboards do exist). The sidebar prefetches them,
-  which is the only source of console errors in the app today.
+- **Features never call the notification service.** They call `emitDomainEvent`, which writes a
+  `NotificationEvent` row; the notification module subscribes to that. Deleting
+  `notifications.subscriber.ts` would silence the platform without breaking a feature.
+- **`EMAIL` and `PUSH` are declared, not faked.** An unconfigured channel reports `SKIPPED` rather
+  than `SENT` or `FAILED`, so the health dashboard never shows green for messages nobody received.
+- **Background fan-outs are tracked.** `settleDomainEvents()` is awaited by the test reset and by
+  graceful shutdown; without it a fire-and-forget write deadlocks against `TRUNCATE` and a deploy
+  can cut a fan-out in half.
+- Remaining 404 route: `/admin` itself (the `/admin/challenges` moderation queue and the
+  `/admin/rewards`, `/admin/leaderboard` and `/admin/notifications` dashboards all exist). The
+  sidebar prefetches it, which is the only source of console errors in the app today.
 
 ---
 
-## Remaining: Phases 16 – 24
+## Remaining: Phases 17 – 24
 
 | Phase | Scope | Notes for whoever picks this up |
 | --- | --- | --- |
-| 16 | Notifications | Models and preferences exist; `/notifications` route is referenced by the shell but not built. The realtime layer already has a `user:{id}` room and a `points:awarded` emitter to build on. |
 | 17 | Admin/Producer dashboard | `writeAudit` and the permission catalogue are ready; `/admin/challenges` (moderation queue) already exists as a template. |
 | 18 | Security hardening | Idempotency-key table exists but is not yet wired into vote endpoints. |
 | 19 | Analytics | `AnalyticsEvent` + rollup models exist; taxonomy is in `ANALYTICS_EVENT_NAMES`. |

@@ -7,6 +7,7 @@ import {
 } from '@reality/shared';
 
 import { AppError, conflict, notFound } from '../../core/errors.js';
+import { emitDomainEvent } from '../../core/domain-events.js';
 import { prisma } from '../../core/prisma.js';
 import { awardPoints } from '../points/points.service.js';
 import { getCurrentShowId } from '../show/show.service.js';
@@ -360,10 +361,18 @@ export async function activatePrediction(predictionId: string) {
     });
   }
 
-  return prisma.prediction.update({
+  const opened = await prisma.prediction.update({
     where: { id: predictionId },
     data: { status: 'OPEN', opensAt: prediction.opensAt ?? new Date() },
   });
+
+  await emitDomainEvent({
+    event: 'prediction.opened',
+    entityId: predictionId,
+    payload: { question: opened.question },
+  });
+
+  return opened;
 }
 
 export async function closePrediction(predictionId: string) {
@@ -447,6 +456,19 @@ export async function resolvePrediction(
     });
     if (result.applied) awarded += 1;
   }
+
+  // Only the people who actually predicted are told the answer. The recipient
+  // list travels with the event so the notification module never has to know
+  // what a `PredictionEntry` is.
+  await emitDomainEvent({
+    event: 'prediction.resolved',
+    entityId: predictionId,
+    payload: {
+      question: prediction.question,
+      answer: prediction.options.find((option) => option.id === correctOptionId)?.label ?? 'decided',
+      userIds: [...new Set(entries.map((entry) => entry.userId))],
+    },
+  });
 
   return {
     predictionId,

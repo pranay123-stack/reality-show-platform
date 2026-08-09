@@ -12,6 +12,7 @@ import { DEFAULT_POINT_RULES } from '@reality/shared';
 
 import { hashPassword } from '../src/core/password.js';
 import { normalizeEmail } from '../src/modules/auth/email-normalization.js';
+import { DEFAULT_TEMPLATES } from '../src/modules/notifications/templates.js';
 import {
   ALL_PERMISSIONS,
   ROLE_DESCRIPTIONS,
@@ -1182,8 +1183,38 @@ async function seedSocial() {
   );
 }
 
+/**
+ * Templates as data.
+ *
+ * Seeded from the built-in defaults so the database and the fallback agree on
+ * day one, and so an operator editing copy has a row to edit rather than having
+ * to invent one.
+ */
+async function seedNotificationTemplates() {
+  let count = 0;
+
+  for (const [event, template] of Object.entries(DEFAULT_TEMPLATES)) {
+    await prisma.notificationTemplate.upsert({
+      where: { event },
+      update: {},
+      create: {
+        event,
+        type: template.type,
+        titleTemplate: template.title,
+        bodyTemplate: template.body,
+        linkTemplate: template.link ?? null,
+      },
+    });
+    count += 1;
+  }
+
+  console.log(`  ✓ ${count} notification templates`);
+}
+
 async function seedNotificationPreferences() {
-  const types = ['POLL_STARTED', 'PREDICTION_CLOSING', 'REWARD_RECEIVED', 'WEEKEND_OPEN'] as const;
+  // One row per feature bucket. Everything in-app by default; nothing by email
+  // or push until somebody asks for it.
+  const types = ['PREDICTION', 'CHALLENGE', 'REWARD', 'WEEKEND', 'LEADERBOARD'] as const;
   let count = 0;
 
   for (const user of DEMO_USERS) {
@@ -1221,6 +1252,7 @@ async function main() {
   await seedWeekend();
   await seedLedger();
   await seedSocial();
+  await seedNotificationTemplates();
   await seedNotificationPreferences();
 
   console.log('\nSeed complete.\n');

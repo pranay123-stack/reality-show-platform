@@ -8,6 +8,7 @@ import {
 } from '@reality/shared';
 
 import { AppError, conflict, forbidden, notFound } from '../../core/errors.js';
+import { emitDomainEvent } from '../../core/domain-events.js';
 import { prisma } from '../../core/prisma.js';
 import { awardPoints } from '../points/points.service.js';
 import { getCurrentShowId } from '../show/show.service.js';
@@ -552,6 +553,17 @@ export async function moderateChallenge(
     });
   }
 
+  // Announce what happened. This module has no idea anybody is listening.
+  await emitDomainEvent({
+    event: decision === 'APPROVE' ? 'challenge.approved' : 'challenge.rejected',
+    entityId: challengeId,
+    payload: {
+      userId: challenge.authorId,
+      title: challenge.title,
+      reason: reason ?? 'No reason was given.',
+    },
+  });
+
   return toModerationView(updated);
 }
 
@@ -691,6 +703,12 @@ export async function selectChallenge(challengeId: string, producerId: string) {
     reason: 'selected',
     ruleKey: 'CHALLENGE_SELECTED',
     createdById: producerId,
+  });
+
+  await emitDomainEvent({
+    event: 'challenge.selected',
+    entityId: challengeId,
+    payload: { userId: challenge.authorId, title: challenge.title },
   });
 
   return toView(updated, null, false);

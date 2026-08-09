@@ -17,11 +17,12 @@ import {
   LiveIndicator,
   cn,
 } from '@reality/ui';
-import { Bell, Gift, LogOut, Menu, Settings, Shield, Sparkles, Trophy, User } from 'lucide-react';
+import { Gift, LogOut, Menu, Settings, Shield, Sparkles, Trophy, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import { useDashboard } from '@/hooks/use-dashboard';
 import { env } from '@/lib/env';
 import { ALL_NAV_ITEMS, BOTTOM_NAV, NAV_GROUPS, type NavItem } from '@/lib/navigation';
@@ -154,6 +155,14 @@ function NavTree({ onNavigate }: { onNavigate?: () => void }) {
             <Trophy className="h-4 w-4 shrink-0" aria-hidden />
             Leaderboard
           </Link>
+          <Link
+            href="/admin/notifications"
+            onClick={onNavigate}
+            className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-muted transition-colors hover:bg-surface-raised hover:text-foreground"
+          >
+            <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
+            Notifications
+          </Link>
         </div>
       )}
     </nav>
@@ -239,23 +248,11 @@ function TopBar() {
             </span>
           </span>
 
-          <NotificationsButton />
+          <NotificationBell />
           <ProfileMenu />
         </div>
       </div>
     </header>
-  );
-}
-
-function NotificationsButton() {
-  // Wired to the notification service in Phase 16; the control exists now so the
-  // shell layout is final and later work is drop-in.
-  return (
-    <Button asChild variant="ghost" size="icon" aria-label="Notifications">
-      <Link href="/notifications">
-        <Bell className="h-5 w-5" aria-hidden />
-      </Link>
-    </Button>
   );
 }
 

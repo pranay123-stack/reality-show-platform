@@ -159,27 +159,10 @@ export type RewardType = (typeof REWARD_TYPES)[number];
 // the transition rules that give them meaning. Keeping a second copy here got
 // them out of step with the database once already.
 
-export const NOTIFICATION_TYPES = [
-  'PREDICTION_CLOSING',
-  'PREDICTION_RESOLVED',
-  'POLL_STARTED',
-  'POLL_ENDED',
-  'CHALLENGE_APPROVED',
-  'CHALLENGE_SELECTED',
-  'REWARD_RECEIVED',
-  'LEADERBOARD_MOVEMENT',
-  'WEEKEND_OPEN',
-  'WEEKEND_SELECTION',
-  'NOMINATION_OPEN',
-  'EVICTION_OPEN',
-  'KITCHEN_DECISION',
-  'LIVE_EVENT',
-  'SYSTEM',
-] as const;
-export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+// Notification types, channels and the event catalogue live in
+// `schemas/notifications.ts`, next to the templates and preferences that give
+// them meaning. A second copy here drifted out of step once already.
 
-export const NOTIFICATION_CHANNELS = ['IN_APP', 'EMAIL', 'PUSH'] as const;
-export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 
 export const EVENT_TYPES = [
   'TASK',

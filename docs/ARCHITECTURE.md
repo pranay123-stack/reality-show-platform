@@ -184,7 +184,8 @@ Detailed columns land in Phase 2. This is the entity map and the invariants that
 
 ### 4.4 Economy & engagement
 `PointsLedger`, `PointsRule`, `Reward`, `RewardRedemption`, `Leaderboard`, `LeaderboardEntry`,
-`Notification`, `NotificationPreference`, `AnalyticsEvent`.
+`Notification`, `NotificationEvent`, `NotificationPreference`, `NotificationTemplate`,
+`NotificationDelivery`, `AnalyticsEvent`.
 
 ### 4.5 Governance
 `AdminAction`, `AuditLog`, `AbuseReport`, `ModerationDecision`, `IdempotencyKey`.
@@ -325,9 +326,9 @@ Four roles, strictly ordered by capability:
 | Role | Scope |
 | --- | --- |
 | `USER` | Participate: vote, predict, submit challenges, redeem rewards. |
-| `MODERATOR` | Everything USER, plus content moderation, abuse queue, user warnings, read-only view of the reward catalogue and redemption queue, and inspecting how a leaderboard ranking was computed. |
-| `PRODUCER` | Everything MODERATOR, plus show operations: create/activate/close/resolve polls, predictions, rounds, kitchen decisions, weekend selection; running the reward catalogue, including authorising a physical or experience reward; and rebuilding leaderboard caches and managing communities. |
-| `ADMIN` | Everything PRODUCER, plus user administration, role assignment, points configuration, reversal of ledger entries, audit logs, the two reward actions that take something back from a user who earned it (retiring a reward, force-cancelling a redemption), and freezing or exporting a leaderboard. |
+| `MODERATOR` | Everything USER, plus content moderation, abuse queue, user warnings, read-only view of the reward catalogue and redemption queue, inspecting how a leaderboard ranking was computed, and reading the notification health dashboard. |
+| `PRODUCER` | Everything MODERATOR, plus show operations: create/activate/close/resolve polls, predictions, rounds, kitchen decisions, weekend selection; running the reward catalogue, including authorising a physical or experience reward; rebuilding leaderboard caches, managing communities, and retrying failed notification deliveries. |
+| `ADMIN` | Everything PRODUCER, plus user administration, role assignment, points configuration, reversal of ledger entries, audit logs, the two reward actions that take something back from a user who earned it (retiring a reward, force-cancelling a redemption), freezing or exporting a leaderboard, and announcing to every user at once. |
 
 Permissions are stored as strings (`domain.action`, e.g. `poll.create`, `challenge.moderate`,
 `points.reverse`) and mapped to roles in the DB, seeded at Phase 2. Role inheritance is materialised
@@ -411,7 +412,7 @@ pnpm start                # production start (after build)
 | 13 | Weekend Participation | full funnel + moderation + audit; no unauthorised reward promises. |
 | 14 | Points & Rewards engine | concurrency test proves no duplicate credit; reversal supported. |
 | 15 | Leaderboards | Redis-backed projection of `PointsLedger`; no aggregate query per request; tie handling, timezone boundaries and 1000-event concurrency all tested. |
-| 16 | Notifications | event-driven, preference-respecting, non-spammy. |
+| 16 | Notifications | event-driven via a durable outbox; no feature imports the notification module; deduplicated per (event, entity, user); preference-respecting; IN_APP live with EMAIL/PUSH declared. |
 | 17 | Admin/producer dashboard | every domain operable; audit logs on sensitive actions. |
 | 18 | Security & abuse hardening | rate limits, idempotency, headers, CORS, WS auth, dependency audit. |
 | 19 | Analytics | event taxonomy + admin visualisations, minimal PII. |

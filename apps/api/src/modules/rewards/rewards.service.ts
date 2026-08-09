@@ -11,6 +11,7 @@ import {
 } from '@reality/shared';
 
 import { AppError, conflict, forbidden, notFound } from '../../core/errors.js';
+import { emitDomainEvent } from '../../core/domain-events.js';
 import { prisma } from '../../core/prisma.js';
 import { awardPoints, spendPoints } from '../points/points.service.js';
 import {
@@ -504,6 +505,12 @@ export async function redeemReward(rewardId: string, userId: string): Promise<Re
     include: REDEMPTION_INCLUDE,
   });
 
+  await emitDomainEvent({
+    event: 'reward.redemption_created',
+    entityId: redemptionId,
+    payload: { userId, rewardName: reward.name, points: reward.pointCost },
+  });
+
   return { redemption: toRedemptionView(redemption), pointsSpent: reward.pointCost, balance };
 }
 
@@ -642,6 +649,33 @@ async function transition(
     where: { id: redemptionId },
     include: REDEMPTION_INCLUDE,
   });
+
+  // One emit for the whole lifecycle rather than four sprinkled through the
+  // callers: every state change funnels through here, so this is the only place
+  // that can miss one.
+  const eventForState = {
+    APPROVED: 'reward.redemption_approved',
+    FULFILLED: 'reward.redemption_fulfilled',
+    CANCELLED: 'reward.redemption_cancelled',
+    REJECTED: 'reward.redemption_cancelled',
+    EXPIRED: 'reward.redemption_cancelled',
+  } as const;
+
+  const eventKey = eventForState[to as keyof typeof eventForState];
+  if (eventKey) {
+    await emitDomainEvent({
+      event: eventKey,
+      entityId: redemptionId,
+      // A redemption can be approved and later cancelled; both deserve telling.
+      variant: to,
+      payload: {
+        userId: existing.userId,
+        rewardName: existing.reward.name,
+        points: existing.pointsSpent,
+      },
+    });
+  }
+
   return toRedemptionView(updated);
 }
 

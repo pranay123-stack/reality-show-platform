@@ -9,6 +9,7 @@ import {
 } from '@reality/shared';
 
 import { AppError, conflict, forbidden, notFound } from '../../core/errors.js';
+import { emitDomainEvent } from '../../core/domain-events.js';
 import { prisma } from '../../core/prisma.js';
 import { screenContent } from '../challenges/content-moderation.js';
 import { awardPoints } from '../points/points.service.js';
@@ -523,6 +524,17 @@ export async function moderateSubmission(
     return result;
   });
 
+  if (decision === 'REJECT') {
+    await emitDomainEvent({
+      event: 'weekend.submission_rejected',
+      entityId: submissionId,
+      payload: {
+        userId: submission.userId,
+        reason: reason ?? 'It did not meet the entry guidelines.',
+      },
+    });
+  }
+
   return updated;
 }
 
@@ -663,6 +675,12 @@ export async function selectSubmission(
     reason: `selected:${submissionId}`,
     ruleKey: 'WEEKEND_SELECTED',
     createdById: actorId,
+  });
+
+  await emitDomainEvent({
+    event: 'weekend.submission_selected',
+    entityId: submissionId,
+    payload: { userId: submission.userId, title: round.title },
   });
 
   return getRound(roundId, null);
@@ -810,10 +828,22 @@ export async function advanceRound(roundId: string, to: WeekendRoundStatus) {
   });
   assertTransition(round.status, to);
 
-  return prisma.weekendParticipationRound.update({
+  const updated = await prisma.weekendParticipationRound.update({
     where: { id: roundId },
     data: { status: to },
   });
+
+  // SUBMIT is the moment entries actually open, which is the only transition
+  // worth interrupting everybody for.
+  if (to === 'SUBMIT') {
+    await emitDomainEvent({
+      event: 'weekend.round_opened',
+      entityId: roundId,
+      payload: { title: round.title },
+    });
+  }
+
+  return updated;
 }
 
 export async function listRounds() {

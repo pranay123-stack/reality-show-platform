@@ -12,6 +12,7 @@ import {
 } from '@reality/shared';
 
 import { AppError, conflict, forbidden, notFound } from '../../core/errors.js';
+import { emitDomainEvent } from '../../core/domain-events.js';
 import { prisma } from '../../core/prisma.js';
 import { redis } from '../../core/redis.js';
 import { boundsForKey, periodBounds } from './periods.js';
@@ -838,7 +839,70 @@ export async function snapshotLeaderboard(
     }),
   ]);
 
+  await announceMovement(window, bounds.key, entries);
+
   return { id: board.id, entryCount: entries.length };
+}
+
+/**
+ * How far someone must move before it is worth interrupting them.
+ *
+ * A leaderboard shuffles constantly; telling a user about every single-place
+ * wobble would train them to ignore the bell entirely. Three places is enough to
+ * feel like something happened, and reaching the top ten always is.
+ */
+const MOVEMENT_THRESHOLD = 3;
+const TOP_TIER = 10;
+
+/** Round numbers worth being told about, in points earned this season. */
+const MILESTONES = [1000, 5000, 10_000, 25_000, 50_000, 100_000];
+
+async function announceMovement(
+  window: LeaderboardWindow,
+  periodKey: string,
+  entries: {
+    userId: string;
+    rank: number;
+    points: number;
+    previousRank: number | null;
+    movement: number | null;
+  }[],
+): Promise<void> {
+  for (const entry of entries) {
+    const moved = entry.movement;
+    if (moved !== null && Math.abs(moved) >= MOVEMENT_THRESHOLD) {
+      const enteringTopTier = entry.rank <= TOP_TIER && (entry.previousRank ?? 999) > TOP_TIER;
+      if (moved > 0 || !enteringTopTier) {
+        await emitDomainEvent({
+          event: moved > 0 ? 'leaderboard.rank_up' : 'leaderboard.rank_down',
+          entityId: entry.userId,
+          // One telling per user per board period — not per snapshot, or a
+          // five-minute rebuild cadence would notify twelve times an hour.
+          variant: `${window}:${periodKey}:${entry.rank}`,
+          payload: {
+            userId: entry.userId,
+            rank: entry.rank,
+            places: Math.abs(moved),
+            window: window.toLowerCase(),
+          },
+        });
+      }
+    }
+
+    // Milestones are on the season board only: passing 5 000 points "today" is
+    // not a milestone, it is a good afternoon.
+    if (window === 'SEASON') {
+      const passed = MILESTONES.filter((milestone) => entry.points >= milestone).at(-1);
+      if (passed) {
+        await emitDomainEvent({
+          event: 'leaderboard.milestone',
+          entityId: entry.userId,
+          variant: String(passed),
+          payload: { userId: entry.userId, milestone: passed },
+        });
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@ import {
 } from '@reality/shared';
 
 import { AppError, conflict, notFound } from '../../core/errors.js';
+import { emitDomainEvent } from '../../core/domain-events.js';
 import { prisma } from '../../core/prisma.js';
 import { awardPoints } from '../points/points.service.js';
 import { getCurrentShowId } from '../show/show.service.js';
@@ -580,10 +581,18 @@ export async function openDecision(decisionId: string) {
     });
   }
 
-  return prisma.kitchenDecision.update({
+  const opened = await prisma.kitchenDecision.update({
     where: { id: decisionId },
     data: { status: 'OPEN' },
   });
+
+  await emitDomainEvent({
+    event: 'kitchen.decision_opened',
+    entityId: decisionId,
+    payload: { title: decision.title },
+  });
+
+  return opened;
 }
 
 /** Idempotent by construction: the conditional update matches nothing twice. */
@@ -613,6 +622,31 @@ export async function closeDecision(decisionId: string) {
  * afforded. No money moves here — `spentUnits` is untouched until production
  * records what it actually implemented.
  */
+/**
+ * Tells the people who voted what the house decided.
+ *
+ * The voter list is gathered here rather than in the notification module: this
+ * file is the one that knows what a `KitchenVote` is, and the event carries the
+ * answer so nothing downstream needs to.
+ */
+async function emitKitchenResult(
+  decisionId: string,
+  title: string,
+  winner: string,
+): Promise<void> {
+  const voters = await prisma.kitchenVote.findMany({
+    where: { decisionId },
+    select: { userId: true },
+    distinct: ['userId'],
+  });
+
+  await emitDomainEvent({
+    event: 'kitchen.result_published',
+    entityId: decisionId,
+    payload: { title, winner, userIds: voters.map((vote) => vote.userId) },
+  });
+}
+
 export async function publishAudienceResult(decisionId: string, actorId: string) {
   const decision = await prisma.kitchenDecision.findUniqueOrThrow({
     where: { id: decisionId },
@@ -644,6 +678,8 @@ export async function publishAudienceResult(decisionId: string, actorId: string)
     totalVotes: decision.totalVotes,
     computedAt: new Date().toISOString(),
   } satisfies KitchenAudienceResult;
+
+  await emitKitchenResult(decisionId, decision.title, resolution.selected[0]?.label ?? 'the top pick');
 
   await prisma.$transaction([
     prisma.kitchenResult.upsert({

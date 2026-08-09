@@ -269,22 +269,38 @@ enum RedemptionStatus {
   EXPIRED
 }
 
+/// The bucket a user sets a preference on.
+///
+/// Deliberately coarse: people want to hear about *predictions*, not to
+/// configure "closing soon" separately from "result published". Fine-grained
+/// event identity lives in `Notification.event`, which is what templates and
+/// deduplication key off.
 enum NotificationType {
-  PREDICTION_CLOSING
-  PREDICTION_RESOLVED
-  POLL_STARTED
-  POLL_ENDED
-  CHALLENGE_APPROVED
-  CHALLENGE_SELECTED
-  REWARD_RECEIVED
-  LEADERBOARD_MOVEMENT
-  WEEKEND_OPEN
-  WEEKEND_SELECTION
-  NOMINATION_OPEN
-  EVICTION_OPEN
-  KITCHEN_DECISION
-  LIVE_EVENT
+  PREDICTION
+  POLL
+  CHALLENGE
+  PERSPECTIVE
+  ROUND
+  KITCHEN
+  WEEKEND
+  REWARD
+  LEADERBOARD
   SYSTEM
+}
+
+/// Where a queued event or delivery has got to.
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  /// Suppressed by the recipient's preferences — not a failure.
+  SKIPPED
+}
+
+enum NotificationEventStatus {
+  PENDING
+  PROCESSED
+  FAILED
 }
 
 enum NotificationChannel {
@@ -1851,24 +1867,99 @@ model CommunityMember {
 // Notifications
 // ===========================================================================
 
+/// The durable record of something that happened, written by the feature that
+/// did it. Features know about *events*; they do not know notifications exist.
+///
+/// An outbox rather than a bare in-process emitter, because a crash between
+/// "the challenge was approved" and "the author was told" would otherwise lose
+/// the telling with no way to notice or replay it.
+model NotificationEvent {
+  id       String @id @default(cuid())
+  /// Catalogue key, e.g. `challenge.approved`. A string rather than an enum so
+  /// a new event needs a template row, not a migration.
+  event    String
+  /// The thing the event is about — a prediction id, a redemption id.
+  entityId String
+  /// Collapses a repeated emit of the same happening.
+  dedupeKey String @unique
+  payload  Json?
+  status   NotificationEventStatus @default(PENDING)
+  attempts Int      @default(0)
+  lastError String?
+  /// How many notifications this event produced once fanned out.
+  fanout   Int      @default(0)
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  notifications Notification[]
+
+  @@index([status, createdAt])
+  @@index([event, createdAt])
+}
+
 model Notification {
   id        String              @id @default(cuid())
   userId    String
   type      NotificationType
+  /// Fine-grained catalogue key this came from, e.g. `reward.fulfilled`.
+  event     String
+  eventId   String?
   channel   NotificationChannel @default(IN_APP)
   title     String
   body      String
+  /// Where tapping the notification should take the user.
+  link      String?
   data      Json?
-  /// Collapses repeat sends of the same thing — the anti-spam guarantee.
+  /// `event:entityId:userId`. With the unique index below, this is the whole
+  /// anti-duplicate guarantee — a thousand identical events still produce one row.
   dedupeKey String?
   readAt    DateTime?
   createdAt DateTime            @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceEvent NotificationEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  deliveries NotificationDelivery[]
 
   @@unique([userId, dedupeKey])
   @@index([userId, readAt, createdAt])
   @@index([createdAt])
+  @@index([eventId])
+}
+
+/// One row per channel attempt, so a failed email is visible and retryable
+/// without touching the notification the user has already seen in-app.
+model NotificationDelivery {
+  id             String              @id @default(cuid())
+  notificationId String
+  channel        NotificationChannel
+  status         DeliveryStatus      @default(PENDING)
+  attemptCount   Int                 @default(0)
+  lastError      String?
+  /// Set when the channel accepted it; null while pending or failed.
+  deliveredAt    DateTime?
+  nextAttemptAt  DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, channel])
+  @@index([status, nextAttemptAt])
+  @@index([channel, status])
+}
+
+/// Wording as data. Copy changes without a deploy, and the same event renders
+/// consistently everywhere it is sent.
+model NotificationTemplate {
+  id           String           @id @default(cuid())
+  event        String           @unique
+  type         NotificationType
+  titleTemplate String
+  bodyTemplate  String
+  linkTemplate  String?
+  active       Boolean          @default(true)
+  updatedAt    DateTime         @updatedAt
+  createdAt    DateTime         @default(now())
 }
 
 model NotificationPreference {

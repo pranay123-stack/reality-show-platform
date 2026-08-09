@@ -3,6 +3,7 @@ import { attachRealtime } from './realtime/server.js';
 import { getConfig } from './core/config.js';
 import { checkDatabase, disconnectPrisma } from './core/prisma.js';
 import { checkRedis, disconnectRedis } from './core/redis.js';
+import { settleDomainEvents } from './core/domain-events.js';
 import {
   cancelScheduledSync,
   syncLeaderboards,
@@ -53,6 +54,9 @@ async function main(): Promise<void> {
     try {
       clearInterval(projectionTimer);
       cancelScheduledSync();
+      // Let queued notification fan-outs finish rather than cutting them off
+      // half-written; they are short and the alternative is a lost telling.
+      await settleDomainEvents();
       await app.close();
       await Promise.all([disconnectPrisma(), disconnectRedis()]);
       process.exit(0);

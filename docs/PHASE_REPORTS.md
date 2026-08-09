@@ -1371,3 +1371,106 @@ are now built by replaying seeded deltas from zero.
 
 `pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 483 passed ·
 `pnpm build` 4/4.
+
+---
+
+## Phase 16 — Notification System
+
+Telling people what happened, without any feature knowing that anybody is
+listening.
+
+### The shape
+
+`Feature → NotificationEvent (outbox) → dispatcher → NotificationService →
+channel providers`. The organising rule is the direction of dependency: the
+challenge module records that a challenge was approved, and it does not import
+the notification service, does not know a template exists, and does not change
+when the wording does. Deleting `notifications.subscriber.ts` would stop every
+notification on the platform without breaking a single feature — which is the
+test of whether the decoupling is real rather than decorative.
+
+### Why events are a table and not an emitter
+
+An in-process emitter would be a third of the code and would lose an event
+whenever the process died between "the challenge was approved" and "the author
+was told" — silently, with nothing to replay and nothing to inspect. Writing the
+event down first makes the handoff durable: the row survives a crash, a failed
+fan-out shows up in an admin queue, and retrying is re-reading a row rather than
+reconstructing what happened from a log.
+
+The trade is eventual consistency, which for a notification is exactly right —
+nobody needs to be told inside the transaction that produced the thing.
+
+### Three levels, kept distinct
+
+- **Event** (`prediction.resolved`) — fine-grained, keys the template and the
+  deduplication.
+- **Type** (`PREDICTION`) — the preference bucket. Deliberately coarse: people
+  want to mute a feature, not tune fifteen switches. The old enum mixed the two
+  granularities, so the migration collapses `PREDICTION_CLOSING` and
+  `PREDICTION_RESOLVED` onto one bucket rather than dropping the rows.
+- **Channel** (`IN_APP`) — how it goes out.
+
+### Anti-spam, structurally
+
+- `dedupeKey = event:entityId[:variant]:userId` with a unique index. A thousand
+  simultaneous identical events still produce one row per person.
+- A muted bucket produces **no row at all**, rather than a hidden one.
+- **A recipient list is derived, never supplied.** No caller anywhere can name
+  who gets notified — the audience comes from the event catalogue and the data.
+  That is what makes "unauthorised notification creation" impossible rather than
+  merely guarded; the one hand-authored route, the admin announcement, cannot
+  choose recipients either.
+- Rank movement is only announced past three places, and milestones only on the
+  season board, because a leaderboard shuffles constantly and telling somebody
+  about every single-place wobble trains them to ignore the bell.
+
+### Channels
+
+`IN_APP` is real — the `Notification` row *is* the delivery, which is why it
+cannot fail. `EMAIL` and `PUSH` are declared rather than faked: an unconfigured
+channel reports `SKIPPED`, not `FAILED`, because a provider that silently
+pretends to send produces a green dashboard while nobody receives anything, and
+because a failure queue full of "no SMTP configured" is noise no retry can fix.
+
+Failures retry with exponential backoff to a ceiling of five attempts, then stop
+rather than spinning forever.
+
+### Tests
+
+11 unit tests on template rendering and catalogue coverage, 37 integration tests
+covering all eight required scenarios. The concurrency case is the brief's own:
+**1000 identical events emitted simultaneously** produce exactly one event row,
+and processing that event 50 times concurrently produces exactly one notification
+and one delivery per user.
+
+### Live verification
+
+| Check | Result |
+| --- | --- |
+| Moderator approves a challenge via the real API | event `challenge.approved` recorded → `PROCESSED`, `fanout: 1` |
+| The notification it produced | correct template, placeholder filled, link `/challenges/chal_4` |
+| Author's feed and bell | unread count 1; mark-read returns `unreadCount: 0` |
+| Author mutes the CHALLENGE bucket, another approval lands | event recorded, **`fanout: 0`**, no new row |
+| Admin health | 2 events processed, 3 channels listed, EMAIL/PUSH `available: false`, 0 failures |
+| Admin announcement | reached all 10 verified accounts, audited as `notification.announce` |
+| Bell, panel, inbox, settings, admin at 1440/834/390 | **0 px** horizontal overflow, including the popover on mobile |
+| Preference toggle | persisted across a reload; 10 buckets × 3 channels |
+
+### Two bugs the tests found
+
+**A repeated happening could only ever notify once.** The notification dedupe key
+was `event:entityId:userId` while the *event* key included a variant, so a
+challenge trending again next week was silently collapsed into the first
+telling. The notification key now derives from the event's own key, which
+carries the variant.
+
+**Background fan-outs deadlocked the test suite.** Fire-and-forget dispatch meant
+a fan-out from one test was still writing when the next test's `TRUNCATE` asked
+for an exclusive lock — an intermittent `40P01` in unrelated suites. The bus now
+tracks in-flight work and exposes `settleDomainEvents()`, which the test reset
+awaits and which graceful shutdown now also awaits, so a deploy no longer cuts a
+fan-out in half.
+
+`pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 531 passed ·
+`pnpm build` 4/4.

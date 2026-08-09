@@ -9,4 +9,5 @@ export * from './schemas/perspectives';
 export * from './schemas/kitchen';
 export * from './schemas/weekend';
 export * from './schemas/leaderboards';
+export * from './schemas/notifications';
 export * from './schemas/rewards';

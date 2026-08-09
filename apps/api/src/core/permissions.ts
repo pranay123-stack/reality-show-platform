@@ -61,6 +61,12 @@ export const PERMISSIONS = {
   LEADERBOARD_REBUILD: 'leaderboard.rebuild',
   COMMUNITY_MANAGE: 'community.manage',
 
+  // Notifications. Reading the health dashboard is an operational question, and
+  // retrying a failed send is an operational action — but writing to every
+  // user's feed at once is not, so announcing sits with admins.
+  NOTIFICATION_INSPECT: 'notification.inspect',
+  NOTIFICATION_MANAGE: 'notification.manage',
+
   // Reward economy. Split three ways so the roles differ meaningfully:
   // moderators look, producers run the catalogue, admins hold the destructive
   // and financial controls.
@@ -83,6 +89,9 @@ export const PERMISSIONS = {
   /// users. Both stay with admins.
   LEADERBOARD_FREEZE: 'leaderboard.freeze',
   LEADERBOARD_EXPORT: 'leaderboard.export',
+  /// Writing to every user's feed at once. Nothing else in the platform reaches
+  /// that many people in one action.
+  NOTIFICATION_ANNOUNCE: 'notification.announce',
   AUDIT_VIEW: 'audit.view',
   SYSTEM_CONFIGURE: 'system.configure',
 } as const;
@@ -98,6 +107,7 @@ const MODERATOR_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.DUPLICATE_REVIEW,
   PERMISSIONS.REWARD_VIEW,
   PERMISSIONS.LEADERBOARD_INSPECT,
+  PERMISSIONS.NOTIFICATION_INSPECT,
 ];
 
 const PRODUCER_PERMISSIONS: PermissionKey[] = [
@@ -133,6 +143,7 @@ const PRODUCER_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.REWARD_PHYSICAL_AUTHORISE,
   PERMISSIONS.LEADERBOARD_REBUILD,
   PERMISSIONS.COMMUNITY_MANAGE,
+  PERMISSIONS.NOTIFICATION_MANAGE,
 ];
 
 const ADMIN_PERMISSIONS: PermissionKey[] = [
@@ -144,6 +155,7 @@ const ADMIN_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.REWARD_FORCE_CANCEL,
   PERMISSIONS.LEADERBOARD_FREEZE,
   PERMISSIONS.LEADERBOARD_EXPORT,
+  PERMISSIONS.NOTIFICATION_ANNOUNCE,
   PERMISSIONS.AUDIT_VIEW,
   PERMISSIONS.SYSTEM_CONFIGURE,
 ];

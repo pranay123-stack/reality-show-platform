@@ -24,8 +24,11 @@ const TABLES_IN_DELETION_ORDER = [
   'AdminAction',
   'AnalyticsDailyRollup',
   'AnalyticsEvent',
+  'NotificationDelivery',
   'NotificationPreference',
   'Notification',
+  'NotificationEvent',
+  'NotificationTemplate',
   'LeaderboardEntry',
   'Leaderboard',
   'CommunityMember',
@@ -118,5 +121,13 @@ export async function resetAll(): Promise<void> {
   // mid-truncation and re-populate the ranking cache behind the next test's back.
   const { cancelScheduledSync } = await import('../../src/modules/leaderboards/projector.js');
   cancelScheduledSync();
+
+  // Notification fan-outs are deliberately fire-and-forget, so one from the
+  // previous test can still be writing. TRUNCATE needs an exclusive lock and
+  // will deadlock against it — waiting is both correct and much easier to debug
+  // than an intermittent 40P01.
+  const { settleDomainEvents } = await import('../../src/core/domain-events.js');
+  await settleDomainEvents();
+
   await Promise.all([resetDatabase(), resetRedis()]);
 }
