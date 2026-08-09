@@ -1,4 +1,7 @@
 import { prisma } from '../../core/prisma.js';
+import { getMyPosition } from '../leaderboards/leaderboards.service.js';
+import { periodBounds } from '../leaderboards/periods.js';
+import { boardTimezone } from '../leaderboards/projector.js';
 import { getLiveState, type LiveState } from '../show/show.service.js';
 
 export interface DashboardSummary {
@@ -212,19 +215,22 @@ export async function getDashboard(userId: string): Promise<DashboardSummary> {
 }
 
 /**
- * Provisional rank straight from the balance column. Phase 15 replaces this
- * with the Redis-backed leaderboard; until then it is honest but unindexed for
- * scale, so it is only ever computed for one user at a time.
+ * Season rank, straight from the ranking cache.
+ *
+ * Phase 15 replaced a `COUNT(*) WHERE pointsBalance > mine` here. That was
+ * honest but scanned every profile for one number on every dashboard load; the
+ * sorted set answers it in O(log N) and, unlike the balance column, ranks
+ * *earned* points rather than what happens to be left after spending.
  */
 async function computeRank(userId: string): Promise<number | null> {
-  const profile = await prisma.userProfile.findUnique({
-    where: { userId },
-    select: { pointsBalance: true },
-  });
-  if (!profile) return null;
-
-  const ahead = await prisma.userProfile.count({
-    where: { pointsBalance: { gt: profile.pointsBalance } },
-  });
-  return ahead + 1;
+  const timezone = boardTimezone();
+  const bounds = periodBounds('SEASON', new Date(), timezone);
+  try {
+    const position = await getMyPosition(userId, 'SEASON', bounds.key);
+    return position.rank;
+  } catch {
+    // A ranking is a nice-to-have on a dashboard; it must never take the page
+    // down with it.
+    return null;
+  }
 }

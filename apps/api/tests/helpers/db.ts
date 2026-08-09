@@ -28,6 +28,10 @@ const TABLES_IN_DELETION_ORDER = [
   'Notification',
   'LeaderboardEntry',
   'Leaderboard',
+  'CommunityMember',
+  'Community',
+  'CommunityType',
+  'UserConnection',
   'RewardFulfillment',
   'RewardRedemption',
   'RewardInventory',
@@ -110,5 +114,9 @@ export async function resetRedis(): Promise<void> {
 }
 
 export async function resetAll(): Promise<void> {
+  // A debounced leaderboard sync queued by a previous test would otherwise fire
+  // mid-truncation and re-populate the ranking cache behind the next test's back.
+  const { cancelScheduledSync } = await import('../../src/modules/leaderboards/projector.js');
+  cancelScheduledSync();
   await Promise.all([resetDatabase(), resetRedis()]);
 }

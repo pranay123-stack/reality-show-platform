@@ -54,6 +54,13 @@ export const PERMISSIONS = {
 
   ANALYTICS_VIEW: 'analytics.view',
 
+  // Leaderboards. Inspecting a ranking is a moderation-grade question ("why is
+  // this account top?"), rebuilding the cache is routine operations, and
+  // freezing a board settles who won — so the three sit at three levels.
+  LEADERBOARD_INSPECT: 'leaderboard.inspect',
+  LEADERBOARD_REBUILD: 'leaderboard.rebuild',
+  COMMUNITY_MANAGE: 'community.manage',
+
   // Reward economy. Split three ways so the roles differ meaningfully:
   // moderators look, producers run the catalogue, admins hold the destructive
   // and financial controls.
@@ -72,6 +79,10 @@ export const PERMISSIONS = {
   /// away from a user who already earned it, so they sit with admins.
   REWARD_RETIRE: 'reward.retire',
   REWARD_FORCE_CANCEL: 'reward.force_cancel',
+  /// Freezing a board decides a standing, and exporting one hands out a list of
+  /// users. Both stay with admins.
+  LEADERBOARD_FREEZE: 'leaderboard.freeze',
+  LEADERBOARD_EXPORT: 'leaderboard.export',
   AUDIT_VIEW: 'audit.view',
   SYSTEM_CONFIGURE: 'system.configure',
 } as const;
@@ -86,6 +97,7 @@ const MODERATOR_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.USER_WARN,
   PERMISSIONS.DUPLICATE_REVIEW,
   PERMISSIONS.REWARD_VIEW,
+  PERMISSIONS.LEADERBOARD_INSPECT,
 ];
 
 const PRODUCER_PERMISSIONS: PermissionKey[] = [
@@ -119,6 +131,8 @@ const PRODUCER_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.ANALYTICS_VIEW,
   PERMISSIONS.REWARD_MANAGE,
   PERMISSIONS.REWARD_PHYSICAL_AUTHORISE,
+  PERMISSIONS.LEADERBOARD_REBUILD,
+  PERMISSIONS.COMMUNITY_MANAGE,
 ];
 
 const ADMIN_PERMISSIONS: PermissionKey[] = [
@@ -128,6 +142,8 @@ const ADMIN_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.POINTS_REVERSE,
   PERMISSIONS.REWARD_RETIRE,
   PERMISSIONS.REWARD_FORCE_CANCEL,
+  PERMISSIONS.LEADERBOARD_FREEZE,
+  PERMISSIONS.LEADERBOARD_EXPORT,
   PERMISSIONS.AUDIT_VIEW,
   PERMISSIONS.SYSTEM_CONFIGURE,
 ];

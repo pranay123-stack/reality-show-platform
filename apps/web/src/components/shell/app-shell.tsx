@@ -17,7 +17,7 @@ import {
   LiveIndicator,
   cn,
 } from '@reality/ui';
-import { Bell, Gift, LogOut, Menu, Settings, Shield, Sparkles, User } from 'lucide-react';
+import { Bell, Gift, LogOut, Menu, Settings, Shield, Sparkles, Trophy, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -145,6 +145,14 @@ function NavTree({ onNavigate }: { onNavigate?: () => void }) {
           >
             <Gift className="h-4 w-4 shrink-0" aria-hidden />
             Rewards
+          </Link>
+          <Link
+            href="/admin/leaderboard"
+            onClick={onNavigate}
+            className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm text-muted transition-colors hover:bg-surface-raised hover:text-foreground"
+          >
+            <Trophy className="h-4 w-4 shrink-0" aria-hidden />
+            Leaderboard
           </Link>
         </div>
       )}

@@ -63,6 +63,15 @@ const configSchema = z.object({
   POLL_BROADCAST_THROTTLE_MS: z.coerce.number().int().min(50).max(5000).default(250),
   HEAT_RECOMPUTE_INTERVAL_MS: z.coerce.number().int().min(1000).default(60_000),
   LEADERBOARD_CACHE_TTL_S: z.coerce.number().int().min(5).default(60),
+  /// The timezone that defines a leaderboard's day and week boundaries. Not the
+  /// server's zone and not the viewer's: a shared ranking needs one agreed
+  /// boundary, or two people in different zones sit on different boards and the
+  /// numbers stop being comparable.
+  LEADERBOARD_TIMEZONE: z.string().min(1).default('UTC'),
+  /// How far back the projector re-reads the ledger on each pass. Concurrent
+  /// inserts can commit out of order, so a strict watermark would skip rows;
+  /// the overlap plus per-entry idempotency closes that gap.
+  LEADERBOARD_OVERLAP_S: z.coerce.number().int().min(5).default(120),
 
   MAIL_DRIVER: z.enum(['console', 'smtp']).default('console'),
   MAIL_FROM: z.string().default('no-reply@reality.local'),

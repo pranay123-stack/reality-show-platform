@@ -1,4 +1,5 @@
 import type { FastifyServerOptions } from 'fastify';
+import pino, { type Logger } from 'pino';
 
 import { getConfig } from './config.js';
 
@@ -63,3 +64,16 @@ export function buildLoggerOptions(): FastifyServerOptions['logger'] {
       : {}),
   };
 }
+
+/**
+ * A logger for work that happens outside a request.
+ *
+ * Background jobs — the leaderboard projection, scheduled rebuilds — have no
+ * `request.log` to write to, and swallowing their failures silently is how a
+ * cache quietly stops updating for a week. Test runs stay silent so a
+ * deliberately provoked failure does not bury the assertion output.
+ */
+export const logger: Logger = pino({
+  level: getConfig().isTest ? 'silent' : getConfig().LOG_LEVEL,
+  redact: { paths: REDACTED_PATHS, censor: '[redacted]' },
+});

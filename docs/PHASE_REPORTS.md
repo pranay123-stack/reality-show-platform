@@ -1244,3 +1244,130 @@ source in `core/plugins.ts`, which repairs every unsafe method across the whole 
 rewards.
 
 `pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 403 passed · `pnpm build` 4/4.
+
+---
+
+## Phase 15 — Leaderboard System
+
+Ranking users on the points the ledger has been recording since Phase 6, without
+ever asking an activity table a question at request time.
+
+### The shape
+
+`PointsLedger` → projector → Redis sorted sets → API. Redis holds the live
+ranking; Postgres holds snapshots, history and the audit trail. The framing that
+decides everything else is that **the sorted set is a derived view, not a system
+of record**:
+
+- Nothing outside the projector can write a score. There is no "add points to
+  the leaderboard" function, and no endpoint anywhere accepts a score, a rank or
+  a points total — a client can only influence its position by earning points.
+- Any board can be rebuilt from the ledger, so losing Redis loses nothing.
+- Every application is guarded per (entry, window), so replays are free.
+
+### Why a watermark with overlap rather than a strict cursor
+
+Rows are drained in `createdAt` order, but concurrent inserts commit out of
+order: a transaction that stamped 12:00:01 can become visible *after* one that
+stamped 12:00:02. A strict "everything after the last timestamp I saw" cursor
+steps over that row and loses it permanently.
+
+So each pass re-reads a 120-second overlap and relies on the idempotency guard to
+discard what it has already applied. Late rows are picked up; nothing is counted
+twice. `LEADERBOARD_OVERLAP_S` tunes it.
+
+### Ranking rules
+
+Competition ranking — 1, 2, 2, 4 — computed as `ZCOUNT (score +inf` plus one, so
+rank 40 000 costs the same as rank 3 and ties share a rank by construction.
+Display order inside a tie is the earliest scorer, so a board never renders two
+ways. Percentile sits beside rank because "#312" stops meaning anything on a
+large board while "top 8%" does not.
+
+Two decisions worth stating plainly:
+
+- **Spending points does not cost you a place.** Leaderboards rank *earned*
+  engagement, so `SPEND` contributes nothing — the same principle as Phase 14's
+  "spending never costs you a level". A refund is a positive `REVERSAL` and is
+  likewise ignored, otherwise redeem-then-cancel would inflate a ranking.
+- **Hiding happens after ranking, never before.** A user who opts out keeps their
+  true position and simply is not listed. Removing them from the ranking would
+  silently promote everyone below them and make the number a lie.
+
+### Time windows
+
+Boundaries are computed with `Intl` in a **configurable board timezone**
+(`LEADERBOARD_TIMEZONE`), not the server's and not the viewer's. A shared ranking
+needs one agreed definition of "today"; if each viewer's zone defined the window,
+two people would sit on different boards and their scores would stop being
+comparable. The viewer's zone is used only to *display* when the reset lands.
+
+The period module is pure and clock-free, which is what let the awkward cases be
+tests: a Kolkata day starting at 18:30Z, a Kathmandu +05:45 offset, 1 January 2027
+belonging to ISO week 53 of 2026, and a New York spring-forward day that is
+genuinely 23 hours long.
+
+### Friends, communities, privacy
+
+Friends are mutual `ACCEPTED` connections only — a follow is one-sided, and
+letting it count would let anyone insert themselves into a stranger's private
+ranking by following them. Friend boards are scored with `ZMSCORE` against the
+global board rather than a per-user sorted set, because friend lists are small
+and churn constantly.
+
+Communities *do* get their own sorted sets, maintained in the same projection
+step, so a large community reads in O(page) rather than O(members). Community
+**types are rows, not an enum**: a producer adds "college" or "creator community"
+at runtime without a migration.
+
+### Administration
+
+View, rebuild, snapshot, freeze, export, and an inspector that recomputes a
+user's score from the ledger and reports it next to the cached one with a
+consistency verdict — so "why is this account top" has an answer rather than an
+assurance. Split three ways: moderators inspect, producers rebuild, admins freeze
+and export. Every action writes an `AuditLog` row.
+
+A frozen board deliberately stops moving, and entries that arrive meanwhile are
+left unapplied rather than silently dropped — which is why unfreezing always
+rebuilds.
+
+### Tests
+
+38 unit tests over the pure period and ranking modules; 42 integration tests
+covering all eleven required scenarios. The concurrency case is the brief's own:
+**1000 events projected simultaneously**, asserting every score is exactly right,
+the board total equals the ledger total, and the final ordering is the one known
+in advance. A second case fires the same 1000 events five times each,
+concurrently, and still lands on the same numbers.
+
+### Live verification
+
+| Check | Result |
+| --- | --- |
+| `/leaderboard` (Everyone / Friends / Communities) and `/admin/leaderboard` at 1440/834/390 | **0 px** horizontal overflow on every tab at every breakpoint |
+| Daily vs weekly vs season | genuinely different boards — 4 ranked today, 6 this season |
+| Friends board | 4 people: the viewer plus three *accepted* friends; a pending request correctly excluded |
+| Communities | private "Production Insiders" invisible to a non-member; public boards listed |
+| Privacy toggle | "Hide me" → *"You are hidden from other people's boards"*, and the user still sees their own true rank |
+| Rank movement | after a snapshot and a 9 000-point award, `LateShiftLee` #6 → #1 (**up 5**) and everyone else down 1 |
+| Freeze | +5 000 points landed in the ledger and the board did not move |
+| Unfreeze | rebuilt automatically; the frozen-period points appeared, nothing lost |
+| Inspector | cached 9 315 = ledger 9 315, `consistent: true`, with the contributing rows listed |
+| Cold cache | every `lb:*` key deleted; the projection heartbeat repopulated all six users with no admin action |
+| CSV export | correct, and audited |
+
+### Two things fixed on the way
+
+The dashboard's provisional rank was a `COUNT(*) WHERE pointsBalance > mine`,
+which scanned every profile for one number on every page load; it now reads the
+sorted set. More importantly it ranked *balance*, so spending points would have
+dropped a user's dashboard rank.
+
+The seed set `pointsBalance` directly without matching ledger rows, so balances
+did not reconcile with `SUM(ledger)` — the invariant the schema header claims.
+Harmless until Phase 15 ranked from the ledger and put everyone at zero. Balances
+are now built by replaying seeded deltas from zero.
+
+`pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 483 passed ·
+`pnpm build` 4/4.

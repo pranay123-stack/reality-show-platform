@@ -1,6 +1,6 @@
 # Build status
 
-**Last updated:** end of Phase 14.
+**Last updated:** end of Phase 15.
 
 Everything below was executed and observed, not assumed. Per-phase detail is in
 [`PHASE_REPORTS.md`](PHASE_REPORTS.md); the design is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -13,15 +13,15 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | --- | --- | --- |
 | Typecheck | `pnpm typecheck` | 7/7 packages |
 | Lint | `pnpm lint` | 5/5 packages, 0 warnings |
-| Tests | `pnpm test` | **403 passed** (396 API across 22 files, 7 shared) |
+| Tests | `pnpm test` | **483 passed** (476 API across 25 files, 7 shared) |
 | Build | `pnpm build` | 4/4 (API bundle + Next production build) |
-| Migrations | `prisma migrate deploy` | 6 migrations, applied cleanly, no drift |
+| Migrations | `prisma migrate deploy` | 7 migrations, applied cleanly, no drift |
 | Seed | `pnpm db:seed` | idempotent, completes |
 | Runtime | API + web started, flows exercised via curl and headless Chromium | see below |
 
 ---
 
-## Phases complete: 0 – 14
+## Phases complete: 0 – 15
 
 | Phase | Delivered |
 | --- | --- |
@@ -40,6 +40,7 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | **12** | Kitchen Control: configurable food decisions, server-side budget resolution, `KitchenResult` holding audience choice and official implementation separately; budget spends only on implementation |
 | **13** | Weekend Participation: seven-step funnel gated on human moderation, eligibility earned across *different* features, and a four-point gate keeping in-person rewards off unless production authorises them |
 | **14** | Reward Economy: catalogue, inventory, eligibility rules and a validated redemption lifecycle. Redemption is one transaction that claims stock atomically before debiting the ledger — 100 concurrent redeemers against 10 units yield exactly 10 winners. Physical and experience rewards carry the same authorisation gate as weekend participation |
+| **15** | Leaderboard System: `PointsLedger` → idempotent projector → Redis sorted sets, never an aggregate query at request time. Daily / weekly / season windows on a configurable board timezone, plus friends and community boards. Competition ranking with tie handling, rank movement from snapshots, privacy controls, and admin rebuild / snapshot / freeze / export / inspect. 1000 simultaneous events lose no updates |
 
 ### Things worth knowing
 
@@ -55,17 +56,24 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 - **CORS never allowed `X-CSRF-Token`**, so every cross-origin write was blocked at the preflight in
   a real browser. `app.inject()` skips CORS, so the integration suite could not see it. Fixed in
   `core/plugins.ts`; it affected every unsafe method, not just rewards.
-- Remaining 404 routes: `/leaderboard`, `/notifications`, `/admin` (the `/admin/challenges`
-  moderation queue and `/admin/rewards` dashboard do exist). The sidebar prefetches them, which is
-  the only source of console errors in the app today.
+- **The leaderboard is a projection, not a source of truth.** `PointsLedger` is authoritative;
+  Redis is a cache that can always be rebuilt from it. The projector re-reads a 120 s overlap on
+  every pass because concurrent inserts commit out of order, and a strict cursor would skip them —
+  per-entry idempotency makes the re-reads free.
+- **Ranking counts earned points, not the balance.** Spending on a reward never costs a place,
+  which also means the dashboard rank no longer moves when someone redeems something.
+- **Period boundaries use `LEADERBOARD_TIMEZONE`** (default UTC), not the server's zone and not the
+  viewer's — a shared ranking needs one agreed "today".
+- Remaining 404 routes: `/notifications`, `/admin` (the `/admin/challenges` moderation queue,
+  `/admin/rewards` and `/admin/leaderboard` dashboards do exist). The sidebar prefetches them,
+  which is the only source of console errors in the app today.
 
 ---
 
-## Remaining: Phases 15 – 24
+## Remaining: Phases 16 – 24
 
 | Phase | Scope | Notes for whoever picks this up |
 | --- | --- | --- |
-| 15 | Leaderboards | Replace the provisional `computeRank` in `dashboard.service.ts` with Redis-backed ranking. |
 | 16 | Notifications | Models and preferences exist; `/notifications` route is referenced by the shell but not built. The realtime layer already has a `user:{id}` room and a `points:awarded` emitter to build on. |
 | 17 | Admin/Producer dashboard | `writeAudit` and the permission catalogue are ready; `/admin/challenges` (moderation queue) already exists as a template. |
 | 18 | Security hardening | Idempotency-key table exists but is not yet wired into vote endpoints. |

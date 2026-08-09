@@ -3,6 +3,10 @@ import { attachRealtime } from './realtime/server.js';
 import { getConfig } from './core/config.js';
 import { checkDatabase, disconnectPrisma } from './core/prisma.js';
 import { checkRedis, disconnectRedis } from './core/redis.js';
+import {
+  cancelScheduledSync,
+  syncLeaderboards,
+} from './modules/leaderboards/projector.js';
 
 async function main(): Promise<void> {
   const config = getConfig();
@@ -28,6 +32,18 @@ async function main(): Promise<void> {
   // and a single TLS terminator in production.
   await attachRealtime(app);
 
+  // The leaderboard projection is nudged after every points award, but a
+  // heartbeat covers the quiet case: a straggler row committed out of order
+  // with no further activity behind it to trigger a drain. Deliberately in the
+  // server entrypoint rather than `buildApp`, so tests get no background timer
+  // racing their assertions.
+  const projectionTimer = setInterval(() => {
+    void syncLeaderboards().catch((error) =>
+      app.log.warn({ err: error }, 'leaderboard projection pass failed'),
+    );
+  }, config.HEAT_RECOMPUTE_INTERVAL_MS);
+  projectionTimer.unref();
+
   await app.listen({ port: config.API_PORT, host: config.API_HOST });
   app.log.info(`API listening on http://${config.API_HOST}:${config.API_PORT}`);
   app.log.info('realtime namespace /live attached');
@@ -35,6 +51,8 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string) => {
     app.log.info({ signal }, 'shutting down');
     try {
+      clearInterval(projectionTimer);
+      cancelScheduledSync();
       await app.close();
       await Promise.all([disconnectPrisma(), disconnectRedis()]);
       process.exit(0);

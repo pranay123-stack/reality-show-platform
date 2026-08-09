@@ -325,9 +325,9 @@ Four roles, strictly ordered by capability:
 | Role | Scope |
 | --- | --- |
 | `USER` | Participate: vote, predict, submit challenges, redeem rewards. |
-| `MODERATOR` | Everything USER, plus content moderation, abuse queue, user warnings, and read-only view of the reward catalogue and redemption queue. |
-| `PRODUCER` | Everything MODERATOR, plus show operations: create/activate/close/resolve polls, predictions, rounds, kitchen decisions, weekend selection; and running the reward catalogue, including authorising a physical or experience reward. |
-| `ADMIN` | Everything PRODUCER, plus user administration, role assignment, points configuration, reversal of ledger entries, audit logs, and the two reward actions that take something back from a user who earned it: retiring a reward and force-cancelling a redemption. |
+| `MODERATOR` | Everything USER, plus content moderation, abuse queue, user warnings, read-only view of the reward catalogue and redemption queue, and inspecting how a leaderboard ranking was computed. |
+| `PRODUCER` | Everything MODERATOR, plus show operations: create/activate/close/resolve polls, predictions, rounds, kitchen decisions, weekend selection; running the reward catalogue, including authorising a physical or experience reward; and rebuilding leaderboard caches and managing communities. |
+| `ADMIN` | Everything PRODUCER, plus user administration, role assignment, points configuration, reversal of ledger entries, audit logs, the two reward actions that take something back from a user who earned it (retiring a reward, force-cancelling a redemption), and freezing or exporting a leaderboard. |
 
 Permissions are stored as strings (`domain.action`, e.g. `poll.create`, `challenge.moderate`,
 `points.reverse`) and mapped to roles in the DB, seeded at Phase 2. Role inheritance is materialised
@@ -360,7 +360,8 @@ Guard chain: `authenticate` → `loadPermissions (Redis-cached, 60 s)` → `requ
 | `GOOGLE_CLIENT_ID/SECRET` | api | — | OAuth placeholder (Phase 3 architecture only) |
 | `HEAT_RECOMPUTE_INTERVAL_MS` | api | `60000` | heat scheduler cadence |
 | `POLL_BROADCAST_THROTTLE_MS` | api | `250` | live tally coalescing |
-| `LEADERBOARD_REBUILD_CRON` | api | `*/5 * * * *` | ranking rebuild cadence |
+| `LEADERBOARD_TIMEZONE` | api | `UTC` | zone defining daily/weekly board boundaries |
+| `LEADERBOARD_OVERLAP_S` | api | `120` | how far back the projector re-reads the ledger each pass |
 | `NEXT_PUBLIC_API_URL` | web | `http://localhost:4000` | REST base |
 | `NEXT_PUBLIC_WS_URL` | web | `http://localhost:4000` | Socket.IO base |
 | `NEXT_PUBLIC_APP_NAME` | web | `Reality Platform` | brand-neutral display name |
@@ -409,7 +410,7 @@ pnpm start                # production start (after build)
 | 12 | Kitchen Control | budget respected server-side; users cannot alter budget. |
 | 13 | Weekend Participation | full funnel + moderation + audit; no unauthorised reward promises. |
 | 14 | Points & Rewards engine | concurrency test proves no duplicate credit; reversal supported. |
-| 15 | Leaderboards | Redis-backed; no full recompute per request; tie handling tested. |
+| 15 | Leaderboards | Redis-backed projection of `PointsLedger`; no aggregate query per request; tie handling, timezone boundaries and 1000-event concurrency all tested. |
 | 16 | Notifications | event-driven, preference-respecting, non-spammy. |
 | 17 | Admin/producer dashboard | every domain operable; audit logs on sensitive actions. |
 | 18 | Security & abuse hardening | rate limits, idempotency, headers, CORS, WS auth, dependency audit. |

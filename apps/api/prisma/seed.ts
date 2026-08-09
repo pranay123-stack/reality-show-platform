@@ -1004,7 +1004,21 @@ async function seedWeekend() {
 // ---------------------------------------------------------------------------
 
 async function seedLedger() {
+  // A baseline row per demo viewer, so the ledger actually reconciles with the
+  // balances seeded above. Without it `pointsBalance` is a number from nowhere,
+  // which breaks the documented invariant that a balance is SUM(ledger) — and
+  // Phase 15's leaderboard, which ranks from the ledger and would rank everyone
+  // at zero.
+  const baseline = DEMO_USERS.filter((user) => user.points > 0).map((user) => ({
+    userId: user.id,
+    delta: user.points,
+    sourceType: 'ACHIEVEMENT' as const,
+    sourceId: 'seed_baseline',
+    reason: 'season-to-date',
+  }));
+
   const entries = [
+    ...baseline,
     { userId: 'usr_viewer1', delta: DEFAULT_POINT_RULES.PREDICTION_PARTICIPATION, sourceType: 'PREDICTION' as const, sourceId: 'pred_resolved_1', reason: 'participation' },
     { userId: 'usr_viewer1', delta: DEFAULT_POINT_RULES.PREDICTION_CORRECT, sourceType: 'PREDICTION' as const, sourceId: 'pred_resolved_1', reason: 'correct' },
     { userId: 'usr_viewer1', delta: DEFAULT_POINT_RULES.POLL_PARTICIPATION, sourceType: 'POLL' as const, sourceId: 'poll_closed_1', reason: 'participation' },
@@ -1014,13 +1028,12 @@ async function seedLedger() {
     { userId: 'usr_viewer3', delta: DEFAULT_POINT_RULES.CHALLENGE_SUBMISSION, sourceType: 'CHALLENGE' as const, sourceId: 'chal_3', reason: 'submission' },
   ];
 
-  // Balances start from the profile figures seeded above; the ledger rows here
-  // are the *most recent* activity, so balanceAfter builds on that baseline.
+  // Every balance is built from zero by replaying these deltas, which is what
+  // makes the seeded state self-consistent and re-runnable.
   const running = new Map<string, number>();
 
   for (const entry of entries) {
-    const profile = await prisma.userProfile.findUniqueOrThrow({ where: { userId: entry.userId } });
-    const base = running.get(entry.userId) ?? profile.pointsBalance;
+    const base = running.get(entry.userId) ?? 0;
     const balanceAfter = base + entry.delta;
     running.set(entry.userId, balanceAfter);
 
@@ -1042,7 +1055,9 @@ async function seedLedger() {
         sourceType: entry.sourceType,
         sourceId: entry.sourceId,
         reason: entry.reason,
-        createdAt: at(-hours(24)),
+        // Spread across the week so the daily and weekly boards differ from the
+        // season board, which is the whole point of having three.
+        createdAt: entry.sourceId === 'seed_baseline' ? at(-hours(72)) : at(-hours(2)),
       },
     });
   }
@@ -1055,6 +1070,116 @@ async function seedLedger() {
   }
 
   console.log(`  ✓ ${entries.length} ledger entries`);
+}
+
+/**
+ * The social graph and a couple of communities.
+ *
+ * Community *types* are rows rather than an enum, so this seed is an example of
+ * the mechanism rather than the definition of it — a producer adds "college" or
+ * "creator community" at runtime without a migration.
+ */
+async function seedSocial() {
+  const types = [
+    { key: 'city', label: 'City', description: 'Everyone watching from the same city.' },
+    { key: 'college', label: 'College', description: 'Campus viewing groups.' },
+    { key: 'creator', label: 'Creator community', description: 'A creator and their audience.' },
+  ];
+
+  for (const type of types) {
+    await prisma.communityType.upsert({
+      where: { key: type.key },
+      update: { label: type.label, description: type.description },
+      create: type,
+    });
+  }
+
+  const cityType = await prisma.communityType.findUniqueOrThrow({ where: { key: 'city' } });
+  const creatorType = await prisma.communityType.findUniqueOrThrow({ where: { key: 'creator' } });
+
+  const communities = [
+    {
+      id: 'com_mumbai',
+      typeId: cityType.id,
+      slug: 'mumbai',
+      name: 'Mumbai Viewers',
+      description: 'Watching from Mumbai.',
+      isPrivate: false,
+      members: ['usr_viewer1', 'usr_viewer3', 'usr_viewer5'],
+    },
+    {
+      id: 'com_latenight',
+      typeId: creatorType.id,
+      slug: 'late-night-club',
+      name: 'Late Night Club',
+      description: 'The 2am recap crowd.',
+      isPrivate: false,
+      members: ['usr_viewer2', 'usr_viewer4', 'usr_viewer6', 'usr_viewer1'],
+    },
+    {
+      id: 'com_insiders',
+      typeId: creatorType.id,
+      slug: 'production-insiders',
+      name: 'Production Insiders',
+      description: 'Invitation only.',
+      isPrivate: true,
+      members: ['usr_viewer2'],
+    },
+  ];
+
+  for (const community of communities) {
+    const { members, ...data } = community;
+    await prisma.community.upsert({
+      where: { id: community.id },
+      update: { name: data.name, description: data.description, isPrivate: data.isPrivate },
+      create: data,
+    });
+
+    for (const userId of members) {
+      await prisma.communityMember.upsert({
+        where: { communityId_userId: { communityId: community.id, userId } },
+        update: {},
+        create: { communityId: community.id, userId, isOwner: userId === members[0] },
+      });
+    }
+
+    await prisma.community.update({
+      where: { id: community.id },
+      data: { memberCount: members.length },
+    });
+  }
+
+  // A mix of accepted friendships and one still pending, so the request flow
+  // has something to act on in a demo.
+  const connections = [
+    { requesterId: 'usr_viewer1', addresseeId: 'usr_viewer2', status: 'ACCEPTED' as const },
+    { requesterId: 'usr_viewer1', addresseeId: 'usr_viewer3', status: 'ACCEPTED' as const },
+    { requesterId: 'usr_viewer4', addresseeId: 'usr_viewer1', status: 'ACCEPTED' as const },
+    { requesterId: 'usr_viewer5', addresseeId: 'usr_viewer1', status: 'PENDING' as const },
+    { requesterId: 'usr_viewer2', addresseeId: 'usr_viewer3', status: 'ACCEPTED' as const },
+  ];
+
+  for (const connection of connections) {
+    await prisma.userConnection.upsert({
+      where: {
+        requesterId_addresseeId_kind: {
+          requesterId: connection.requesterId,
+          addresseeId: connection.addresseeId,
+          kind: 'FRIEND',
+        },
+      },
+      update: { status: connection.status },
+      create: {
+        ...connection,
+        kind: 'FRIEND',
+        respondedAt: connection.status === 'ACCEPTED' ? new Date() : null,
+      },
+    });
+  }
+
+  console.log(
+    `  ✓ ${types.length} community types, ${communities.length} communities, ${connections.length} connections`,
+  );
 }
 
 async function seedNotificationPreferences() {
@@ -1095,6 +1220,7 @@ async function main() {
   await seedKitchen();
   await seedWeekend();
   await seedLedger();
+  await seedSocial();
   await seedNotificationPreferences();
 
   console.log('\nSeed complete.\n');

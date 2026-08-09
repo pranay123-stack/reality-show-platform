@@ -211,6 +211,27 @@ enum LeaderboardType {
   COMMUNITY
 }
 
+/// Who may see a user's profile and where they appear in rankings.
+enum ProfileVisibility {
+  PUBLIC
+  FRIENDS
+  PRIVATE
+}
+
+/// A social edge. FRIEND needs both sides to agree, FOLLOW does not — which is
+/// why the friends leaderboard uses ACCEPTED friendships only.
+enum ConnectionKind {
+  FRIEND
+  FOLLOW
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  BLOCKED
+}
+
 enum RewardType {
   DIGITAL_BADGE
   PROFILE_ITEM
@@ -342,6 +363,9 @@ model User {
   ledgerEntries      PointsLedger[]
   redemptions        RewardRedemption[]
   leaderboardEntries LeaderboardEntry[]
+  connectionsFrom    UserConnection[]         @relation("ConnectionRequester")
+  connectionsTo      UserConnection[]         @relation("ConnectionAddressee")
+  communityMemships  CommunityMember[]
   notifications      Notification[]
   notificationPrefs  NotificationPreference[]
   analyticsEvents    AnalyticsEvent[]
@@ -369,12 +393,17 @@ model UserProfile {
   lifetimePoints Int       @default(0)
   currentStreak  Int       @default(0)
   lastActiveAt   DateTime?
+  /// Opt out of every public ranking. The user still has a private rank of
+  /// their own; they simply do not appear in anyone else's list.
+  leaderboardVisible Boolean           @default(true)
+  profileVisibility  ProfileVisibility @default(PUBLIC)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([pointsBalance])
+  @@index([leaderboardVisible])
 }
 
 model UserSession {
@@ -1688,21 +1717,37 @@ model RewardFulfillment {
 // Leaderboards
 // ===========================================================================
 
+/// A frozen point-in-time standing.
+///
+/// Redis holds the *live* ranking; this table holds history. Snapshots are what
+/// make rank movement possible (a rank has to be compared against something)
+/// and what survives a Redis flush.
 model Leaderboard {
-  id         String          @id @default(cuid())
-  type       LeaderboardType
-  /// "2026-08-09" (daily), "2026-W32" (weekly), "season-1", "community"
-  periodKey  String
-  showId     String?
-  computedAt DateTime        @default(now())
-  entryCount Int             @default(0)
-  createdAt  DateTime        @default(now())
+  id          String          @id @default(cuid())
+  type        LeaderboardType
+  /// "2026-08-09" (daily), "2026-W32" (weekly), "season" or a community id.
+  periodKey   String
+  showId      String?
+  communityId String?
+  /// The timezone the period boundaries were computed in. Stored because a
+  /// board's day is only meaningful next to the zone that defined it.
+  timezone    String          @default("UTC")
+  computedAt  DateTime        @default(now())
+  entryCount  Int             @default(0)
+  totalPoints Int             @default(0)
+  /// A frozen board stops accepting projection updates. Used when a ranking is
+  /// being audited or a prize is being settled.
+  frozenAt    DateTime?
+  frozenById  String?
+  createdAt   DateTime        @default(now())
 
-  show    Show?              @relation(fields: [showId], references: [id], onDelete: Cascade)
-  entries LeaderboardEntry[]
+  show      Show?              @relation(fields: [showId], references: [id], onDelete: Cascade)
+  community Community?         @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  entries   LeaderboardEntry[]
 
   @@unique([type, periodKey, showId])
   @@index([type, computedAt])
+  @@index([communityId])
 }
 
 model LeaderboardEntry {
@@ -1714,12 +1759,91 @@ model LeaderboardEntry {
   /// Earlier first-activity wins a tie; stored so ordering is deterministic.
   tieBreaker    DateTime?
   previousRank  Int?
+  /// previousRank - rank. Positive is a climb. Null on a user's first appearance.
+  movement      Int?
 
   leaderboard Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([leaderboardId, userId])
   @@index([leaderboardId, rank])
+  @@index([userId])
+}
+
+// ===========================================================================
+// Social graph & communities
+// ===========================================================================
+
+/// One row per directed edge. A FRIEND edge is only mutual once ACCEPTED; a
+/// FOLLOW edge is accepted on creation because following needs no permission.
+model UserConnection {
+  id          String           @id @default(cuid())
+  requesterId String
+  addresseeId String
+  kind        ConnectionKind   @default(FRIEND)
+  status      ConnectionStatus @default(PENDING)
+  respondedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  requester User @relation("ConnectionRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("ConnectionAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  /// One edge per direction per kind — the database guard against a spammed
+  /// friend request creating a hundred rows.
+  @@unique([requesterId, addresseeId, kind])
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
+}
+
+/// Community *types* are rows, not an enum, so a producer can add "city",
+/// "college" or "creator community" without a migration.
+model CommunityType {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  label       String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  communities Community[]
+
+  @@index([active])
+}
+
+model Community {
+  id          String   @id @default(cuid())
+  typeId      String
+  slug        String   @unique
+  name        String
+  description String?
+  /// A private community is joinable only by invitation and its ranking is
+  /// visible only to members.
+  isPrivate   Boolean  @default(false)
+  memberCount Int      @default(0)
+  createdById String?
+  deletedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  type         CommunityType     @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  members      CommunityMember[]
+  leaderboards Leaderboard[]
+
+  @@index([typeId, deletedAt])
+}
+
+model CommunityMember {
+  id          String   @id @default(cuid())
+  communityId String
+  userId      String
+  isOwner     Boolean  @default(false)
+  joinedAt    DateTime @default(now())
+
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
   @@index([userId])
 }
 

@@ -3,6 +3,7 @@ import { DEFAULT_POINT_RULES, ERROR_CODES, type PointRuleKey } from '@reality/sh
 
 import { AppError } from '../../core/errors.js';
 import { prisma } from '../../core/prisma.js';
+import { scheduleSync } from '../leaderboards/projector.js';
 
 /**
  * The one and only way points move.
@@ -334,8 +335,18 @@ async function applyLedgerEntry(
   };
 
   // Already inside a caller's transaction? Join it — nesting would deadlock.
-  if (client !== prisma) return run(client as Prisma.TransactionClient);
-  return prisma.$transaction(run);
+  const result =
+    client !== prisma ? await run(client as Prisma.TransactionClient) : await prisma.$transaction(run);
+
+  // Nudge the leaderboard projection. Deliberately fire-and-forget and
+  // deliberately *after* the write: the ledger is the source of truth, so
+  // earning points must never depend on the ranking cache being reachable. If
+  // this nudge is missed — a joined transaction that has not committed yet, a
+  // Redis blip — the projector's overlapping re-read picks the row up on a
+  // later pass.
+  scheduleSync();
+
+  return result;
 }
 
 async function readBalance(
