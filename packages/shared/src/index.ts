@@ -8,3 +8,4 @@ export * from './schemas/challenges';
 export * from './schemas/perspectives';
 export * from './schemas/kitchen';
 export * from './schemas/weekend';
+export * from './schemas/rewards';

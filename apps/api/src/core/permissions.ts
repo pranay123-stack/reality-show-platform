@@ -54,12 +54,24 @@ export const PERMISSIONS = {
 
   ANALYTICS_VIEW: 'analytics.view',
 
+  // Reward economy. Split three ways so the roles differ meaningfully:
+  // moderators look, producers run the catalogue, admins hold the destructive
+  // and financial controls.
+  REWARD_VIEW: 'reward.view',
+  REWARD_MANAGE: 'reward.manage',
+  /// Authorising a PHYSICAL or EXPERIENCE reward — the same control weekend
+  /// participation uses for an in-person opportunity.
+  REWARD_PHYSICAL_AUTHORISE: 'reward.physical_authorise',
+
   // Administration
   USER_MANAGE: 'user.manage',
   ROLE_ASSIGN: 'role.assign',
   POINTS_CONFIGURE: 'points.configure',
   POINTS_REVERSE: 'points.reverse',
-  REWARD_MANAGE: 'reward.manage',
+  /// Retiring a reward and force-cancelling a redemption both take something
+  /// away from a user who already earned it, so they sit with admins.
+  REWARD_RETIRE: 'reward.retire',
+  REWARD_FORCE_CANCEL: 'reward.force_cancel',
   AUDIT_VIEW: 'audit.view',
   SYSTEM_CONFIGURE: 'system.configure',
 } as const;
@@ -73,6 +85,7 @@ const MODERATOR_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.CONTENT_HIDE,
   PERMISSIONS.USER_WARN,
   PERMISSIONS.DUPLICATE_REVIEW,
+  PERMISSIONS.REWARD_VIEW,
 ];
 
 const PRODUCER_PERMISSIONS: PermissionKey[] = [
@@ -104,6 +117,8 @@ const PRODUCER_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.WEEKEND_SELECT,
   PERMISSIONS.WEEKEND_PHYSICAL_REWARDS,
   PERMISSIONS.ANALYTICS_VIEW,
+  PERMISSIONS.REWARD_MANAGE,
+  PERMISSIONS.REWARD_PHYSICAL_AUTHORISE,
 ];
 
 const ADMIN_PERMISSIONS: PermissionKey[] = [
@@ -111,7 +126,8 @@ const ADMIN_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.ROLE_ASSIGN,
   PERMISSIONS.POINTS_CONFIGURE,
   PERMISSIONS.POINTS_REVERSE,
-  PERMISSIONS.REWARD_MANAGE,
+  PERMISSIONS.REWARD_RETIRE,
+  PERMISSIONS.REWARD_FORCE_CANCEL,
   PERMISSIONS.AUDIT_VIEW,
   PERMISSIONS.SYSTEM_CONFIGURE,
 ];

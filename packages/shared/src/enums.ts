@@ -155,14 +155,9 @@ export const REWARD_TYPES = [
 ] as const;
 export type RewardType = (typeof REWARD_TYPES)[number];
 
-export const REDEMPTION_STATUSES = [
-  'REQUESTED',
-  'APPROVED',
-  'FULFILLED',
-  'REJECTED',
-  'CANCELLED',
-] as const;
-export type RedemptionStatus = (typeof REDEMPTION_STATUSES)[number];
+// Redemption states live in `schemas/rewards.ts` as REDEMPTION_STATES, next to
+// the transition rules that give them meaning. Keeping a second copy here got
+// them out of step with the database once already.
 
 export const NOTIFICATION_TYPES = [
   'PREDICTION_CLOSING',

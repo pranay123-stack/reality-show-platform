@@ -325,9 +325,9 @@ Four roles, strictly ordered by capability:
 | Role | Scope |
 | --- | --- |
 | `USER` | Participate: vote, predict, submit challenges, redeem rewards. |
-| `MODERATOR` | Everything USER, plus content moderation, abuse queue, user warnings. |
-| `PRODUCER` | Everything MODERATOR, plus show operations: create/activate/close/resolve polls, predictions, rounds, kitchen decisions, weekend selection. |
-| `ADMIN` | Everything PRODUCER, plus user administration, role assignment, points/reward configuration, reversal of ledger entries, and access to audit logs. |
+| `MODERATOR` | Everything USER, plus content moderation, abuse queue, user warnings, and read-only view of the reward catalogue and redemption queue. |
+| `PRODUCER` | Everything MODERATOR, plus show operations: create/activate/close/resolve polls, predictions, rounds, kitchen decisions, weekend selection; and running the reward catalogue, including authorising a physical or experience reward. |
+| `ADMIN` | Everything PRODUCER, plus user administration, role assignment, points configuration, reversal of ledger entries, audit logs, and the two reward actions that take something back from a user who earned it: retiring a reward and force-cancelling a redemption. |
 
 Permissions are stored as strings (`domain.action`, e.g. `poll.create`, `challenge.moderate`,
 `points.reverse`) and mapped to roles in the DB, seeded at Phase 2. Role inheritance is materialised

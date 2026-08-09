@@ -45,6 +45,9 @@ export const ERROR_CODES = {
   INSUFFICIENT_POINTS: 'INSUFFICIENT_POINTS',
   REWARD_UNAVAILABLE: 'REWARD_UNAVAILABLE',
   ALREADY_CLAIMED: 'ALREADY_CLAIMED',
+  /// A real-world reward that production has not signed off on yet. Distinct
+  /// from FORBIDDEN: the caller may publish rewards, this one is not ready.
+  NOT_AUTHORISED: 'NOT_AUTHORISED',
 
   // lifecycle
   INVALID_STATE_TRANSITION: 'INVALID_STATE_TRANSITION',

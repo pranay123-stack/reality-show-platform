@@ -104,71 +104,132 @@ async function seedPointsRules() {
 }
 
 async function seedRewards() {
+  /**
+   * The catalogue.
+   *
+   * Digital rewards can be published straight away. Anything EXPERIENCE or
+   * PHYSICAL starts as a DRAFT requiring production sign-off — the same control
+   * weekend participation applies to an in-person opportunity.
+   */
   const rewards = [
     {
       code: 'BADGE_FIRST_PREDICTION',
       name: 'First Call',
       description: 'Awarded for your first prediction of the season.',
+      category: 'DIGITAL' as const,
       type: 'DIGITAL_BADGE' as const,
-      costPoints: 0,
+      pointCost: 0,
+      status: 'AVAILABLE' as const,
       oncePerUser: true,
+      inventory: { totalUnits: null, remaining: null },
     },
     {
       code: 'BADGE_STREAK_7',
       name: 'Seven Nights',
       description: 'Take part on seven consecutive show days.',
+      category: 'DIGITAL' as const,
       type: 'DIGITAL_BADGE' as const,
-      costPoints: 0,
+      pointCost: 0,
+      status: 'AVAILABLE' as const,
       oncePerUser: true,
+      inventory: { totalUnits: null, remaining: null },
     },
     {
       code: 'FRAME_NEON',
       name: 'Neon Profile Frame',
       description: 'A glowing frame for your profile picture.',
+      category: 'DIGITAL' as const,
       type: 'PROFILE_ITEM' as const,
-      costPoints: 500,
+      pointCost: 500,
+      status: 'AVAILABLE' as const,
       oncePerUser: true,
+      inventory: { totalUnits: null, remaining: null },
+      rule: { minLevel: 2, minActivities: 3, description: 'Reach level 2 and take part three times.' },
     },
     {
       code: 'BOOST_DOUBLE_NIGHT',
       name: 'Double Points Night',
       description: 'Doubles the points you earn for one live episode.',
+      category: 'DIGITAL' as const,
       type: 'POINT_BOOST' as const,
-      costPoints: 1200,
+      pointCost: 1200,
+      status: 'AVAILABLE' as const,
       oncePerUser: false,
+      inventory: { totalUnits: 100, remaining: 100 },
+      rule: { minDistinctFeatures: 2, description: 'Join in with at least two parts of the show.' },
     },
     {
       code: 'SHOUTOUT_LEADERBOARD',
       name: 'Leaderboard Shout-out',
       description: 'Your display name appears on the weekly community wall.',
+      category: 'DIGITAL' as const,
       type: 'SHOUTOUT' as const,
-      costPoints: 2500,
+      pointCost: 2500,
+      status: 'AVAILABLE' as const,
       oncePerUser: false,
       requiresApproval: true,
+      inventory: { totalUnits: 10, remaining: 10 },
+      rule: { minLevel: 3, description: 'Reach level 3.' },
+    },
+    {
+      code: 'EXPERIENCE_VIRTUAL_SET',
+      name: 'Virtual Set Tour',
+      description: 'A supervised virtual walkthrough of the set with a producer.',
+      category: 'EXPERIENCE' as const,
+      type: 'EXPERIENCE' as const,
+      pointCost: 8000,
+      // DRAFT until production authorises it. Nothing is promised meanwhile.
+      status: 'DRAFT' as const,
+      oncePerUser: true,
+      requiresApproval: true,
+      requiresProductionApproval: true,
+      inventory: { totalUnits: 5, remaining: 5 },
     },
     {
       code: 'MERCH_TSHIRT',
       name: 'Season Merch Tee',
       description: 'A season T-shirt. Fulfilment is arranged by production.',
+      category: 'PHYSICAL' as const,
       type: 'MERCH' as const,
-      costPoints: 10_000,
+      pointCost: 10_000,
+      status: 'DRAFT' as const,
       oncePerUser: true,
       requiresApproval: true,
       requiresProductionApproval: true,
-      active: false,
+      inventory: { totalUnits: 25, remaining: 25 },
       disclaimer:
         'Physical rewards are disabled by default and require authorised production staff to enable, confirm availability and arrange fulfilment.',
     },
   ];
 
-  for (const reward of rewards) {
-    await prisma.reward.upsert({
+  for (const { inventory, rule, ...reward } of rewards) {
+    const created = await prisma.rewardCatalog.upsert({
       where: { code: reward.code },
-      update: {},
+      update: { status: reward.status, category: reward.category, pointCost: reward.pointCost },
       create: reward,
     });
+
+    await prisma.rewardInventory.upsert({
+      where: { rewardId: created.id },
+      update: {},
+      create: { rewardId: created.id, ...inventory },
+    });
+
+    if (rule) {
+      await prisma.rewardRule.upsert({
+        where: { rewardId: created.id },
+        update: {},
+        create: { rewardId: created.id, requiredFeatures: [], ...rule },
+      });
+    }
   }
-  console.log(`  ✓ ${rewards.length} rewards (physical reward disabled by default)`);
+
+  const published = rewards.filter((reward) => reward.status === 'AVAILABLE').length;
+  console.log(
+    `  \u2713 ${rewards.length} rewards (${published} published, ${
+      rewards.length - published
+    } awaiting production authorisation)`,
+  );
 }
 
 // ---------------------------------------------------------------------------

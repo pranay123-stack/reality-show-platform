@@ -5,6 +5,7 @@ import rateLimit from '@fastify/rate-limit';
 import { ERROR_CODES } from '@reality/shared';
 import type { FastifyInstance } from 'fastify';
 
+import { CSRF_HEADER } from './auth/cookies.js';
 import { getConfig } from './config.js';
 import { redis } from './redis.js';
 
@@ -32,7 +33,15 @@ export async function registerCorePlugins(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Requested-With'],
+    // CSRF_HEADER must be here or the browser blocks every cross-origin write
+    // at the preflight, before the request is ever sent.
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Idempotency-Key',
+      'X-Requested-With',
+      CSRF_HEADER,
+    ],
     maxAge: 86_400,
   });
 

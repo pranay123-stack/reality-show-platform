@@ -1,6 +1,6 @@
 # Build status
 
-**Last updated:** end of Phase 13.
+**Last updated:** end of Phase 14.
 
 Everything below was executed and observed, not assumed. Per-phase detail is in
 [`PHASE_REPORTS.md`](PHASE_REPORTS.md); the design is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -13,15 +13,15 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | --- | --- | --- |
 | Typecheck | `pnpm typecheck` | 7/7 packages |
 | Lint | `pnpm lint` | 5/5 packages, 0 warnings |
-| Tests | `pnpm test` | **338 passed** (331 API across 20 files, 7 shared) |
+| Tests | `pnpm test` | **403 passed** (396 API across 22 files, 7 shared) |
 | Build | `pnpm build` | 4/4 (API bundle + Next production build) |
-| Migrations | `prisma migrate deploy` | 6 migrations, applied cleanly |
+| Migrations | `prisma migrate deploy` | 6 migrations, applied cleanly, no drift |
 | Seed | `pnpm db:seed` | idempotent, completes |
 | Runtime | API + web started, flows exercised via curl and headless Chromium | see below |
 
 ---
 
-## Phases complete: 0 – 13
+## Phases complete: 0 – 14
 
 | Phase | Delivered |
 | --- | --- |
@@ -39,6 +39,7 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | **11** | Nomination & Eviction: atomic per-user vote allowances, and a hard structural separation between the audience result and the show's official outcome |
 | **12** | Kitchen Control: configurable food decisions, server-side budget resolution, `KitchenResult` holding audience choice and official implementation separately; budget spends only on implementation |
 | **13** | Weekend Participation: seven-step funnel gated on human moderation, eligibility earned across *different* features, and a four-point gate keeping in-person rewards off unless production authorises them |
+| **14** | Reward Economy: catalogue, inventory, eligibility rules and a validated redemption lifecycle. Redemption is one transaction that claims stock atomically before debiting the ledger — 100 concurrent redeemers against 10 units yield exactly 10 winners. Physical and experience rewards carry the same authorisation gate as weekend participation |
 
 ### Things worth knowing
 
@@ -47,19 +48,23 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 - **Demo accounts** (development seed only, password `DemoPass!2026`):
   `admin@`, `producer@`, `moderator@`, `viewer1@`–`viewer6@reality.local`.
 - The **points ledger core landed in Phase 6**, ahead of its nominal Phase 14, because Phase 7
-  depends on it. Phase 14 still owes the reward catalogue, redemption flow, admin visibility and
-  the concurrency test suite.
-- Remaining 404 routes: `/leaderboard`, `/rewards`, `/notifications`,
-  `/admin` (the `/admin/challenges` moderation queue does exist). The sidebar prefetches them,
-  which is the only source of console errors in the app today.
+  depends on it. Phase 14 built the economy on top of it without altering it.
+- **Phase 14 fixed two financial bugs that nothing could reach until points became spendable**: a
+  read-then-write race in `spendPoints` that let two concurrent spends both pass one affordability
+  check, and refunds crediting *lifetime* points, which made redeem-then-cancel a way to farm levels.
+- **CORS never allowed `X-CSRF-Token`**, so every cross-origin write was blocked at the preflight in
+  a real browser. `app.inject()` skips CORS, so the integration suite could not see it. Fixed in
+  `core/plugins.ts`; it affected every unsafe method, not just rewards.
+- Remaining 404 routes: `/leaderboard`, `/notifications`, `/admin` (the `/admin/challenges`
+  moderation queue and `/admin/rewards` dashboard do exist). The sidebar prefetches them, which is
+  the only source of console errors in the app today.
 
 ---
 
-## Remaining: Phases 14 – 24
+## Remaining: Phases 15 – 24
 
 | Phase | Scope | Notes for whoever picks this up |
 | --- | --- | --- |
-| 14 | Points & Rewards | Core exists. Owes: reward catalogue, redemption, reversal admin UI, **concurrency tests**. |
 | 15 | Leaderboards | Replace the provisional `computeRank` in `dashboard.service.ts` with Redis-backed ranking. |
 | 16 | Notifications | Models and preferences exist; `/notifications` route is referenced by the shell but not built. The realtime layer already has a `user:{id}` room and a `points:awarded` emitter to build on. |
 | 17 | Admin/Producer dashboard | `writeAudit` and the permission catalogue are ready; `/admin/challenges` (moderation queue) already exists as a template. |

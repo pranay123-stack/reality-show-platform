@@ -1158,3 +1158,89 @@ One test initially failed on a balance assertion that forgot the 500 starting po
 helper seeds. It now asserts the **ledger delta** (325) as the primary check, with the cached balance
 checked as `500 + 325` — a better test than the one I first wrote, since it proves the points moved
 through the ledger rather than just landing in a column.
+
+---
+
+## Phase 14 — Reward Economy
+
+Spending the points the ledger has been accumulating since Phase 6. The ledger itself was not
+touched: it stays the single source of truth for every movement, and nothing in this module writes
+a balance.
+
+### What was built
+
+`RewardCatalog` (with `RewardInventory`, `RewardRule` and an append-only `RewardFulfillment`
+transition log) and `RewardRedemption`, migration `20260810180000_reward_economy`. Rules live in
+a pure, database-free `rules.ts`: level thresholds, eligibility evaluation, and the transition
+machine `REQUESTED → RESERVED → APPROVED → FULFILLED` with `REJECTED`/`CANCELLED`/`EXPIRED` as
+terminal failures. 27 unit tests cover it without touching a database.
+
+### Redemption is one transaction
+
+Ordered so the scarce thing is claimed first:
+
+1. **Claim a unit** — `UPDATE ... WHERE remaining IS NULL OR remaining > 0`. A single conditional
+   statement the database serialises; `count === 0` means the stock ran out. `NULL - 1` is still
+   `NULL`, so unlimited rewards never deplete while finite ones can never go negative.
+2. **Create the redemption** — the unique `(userId, rewardId, cycleKey)` is the duplicate guard.
+3. **Debit** — `spendPoints` joins the same transaction and appends to `PointsLedger`.
+4. **Log the lifecycle.**
+
+Anything failing rolls back the lot, which is what gives the two guarantees the brief asked for:
+inventory failing moves no points, and points failing holds no unit.
+
+### Two financial bugs found on the way
+
+- **`spendPoints` could be raced.** It read the balance, then wrote it. Two simultaneous spends
+  could both pass a check only one could afford. The balance test now lives in the `WHERE` clause
+  of the debit itself, so checking and deducting are one statement. A regression test redeems two
+  100-point rewards concurrently on a 100-point balance and asserts exactly one wins.
+- **Refunds inflated lifetime points**, and therefore levels — redeem-then-cancel was a way to farm
+  levels for free. Only an `EARN` moves lifetime points now; reversing an award un-earns it, while
+  returning a spend does not.
+
+Neither was reachable before this phase, because nothing spent points.
+
+### Real-world rewards
+
+`PHYSICAL` and `EXPERIENCE` carry the same controls as an in-person weekend opportunity: their own
+permission (`reward.physical_authorise`), an explicit acknowledgement, a disclaimer of at least 20
+characters, and creation forced to `DRAFT`. Publishing one without authorisation is a **409**, not a
+403 — the producer is allowed to publish, the reward simply is not ready. Changing a reward's
+category drops its authorisation.
+
+The permission split was corrected: `REWARD_MANAGE` had been admin-only, which contradicted the
+brief. Now moderators view, producers run the catalogue, and retiring plus force-cancelling — the
+two actions that take something away from a user who already earned it — stay with admins.
+
+### Tests
+
+38 integration tests covering the ten required scenarios. The concurrency case is the brief's own:
+**100 users, 10 units → exactly 10 successes**, 90 rejections all carrying `REWARD_UNAVAILABLE`,
+`remaining + reserved + fulfilled === totalUnits`, ten ledger rows, no balance below zero. Plus a
+double-tapping user charged exactly once, and the cross-reward overdraw case above.
+
+### Live verification
+
+| Check | Result |
+| --- | --- |
+| `/rewards`, `/rewards/[id]`, `/my-rewards`, `/admin/rewards` at 1440/834/390 | **0 px** horizontal overflow everywhere |
+| Redeem a digital reward | balance 2,155 → 955 on a 1,200-point reward; granted immediately |
+| Redeem a free (0-point) reward | granted, **no ledger row written** |
+| Physical reward, unauthorised | invisible to viewers; Publish disabled in the admin UI |
+| Authorise dialog | Authorise stays disabled until the acknowledgement is ticked |
+| After authorisation | reward publishes, appears to viewers with its disclaimer |
+| Redeem it | lands at **RESERVED**, not fulfilled; balance 1,820 → 1,770 |
+| Cancel it | *"Cancelled · 50 points returned"*; balance back to exactly 1,820 |
+| Moderator on `/admin/rewards` | read-only notice, no create/publish/retire controls |
+
+### A bug only the browser could find
+
+The first live redemption failed with *"Failed to fetch"* while every integration test passed.
+The CORS `allowedHeaders` list never included `X-CSRF-Token`, so the browser blocked every
+cross-origin write at the preflight — before the request was ever sent. `app.inject()` bypasses
+CORS entirely, so no amount of integration testing would have caught it. It is fixed at the
+source in `core/plugins.ts`, which repairs every unsafe method across the whole API, not just
+rewards.
+
+`pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 403 passed · `pnpm build` 4/4.

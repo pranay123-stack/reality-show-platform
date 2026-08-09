@@ -220,12 +220,32 @@ enum RewardType {
   EXPERIENCE
 }
 
+/// Policy category. Drives authorisation: PHYSICAL and EXPERIENCE rewards
+/// need production sign-off, exactly as an in-person weekend opportunity does.
+enum RewardCategory {
+  DIGITAL
+  EXPERIENCE
+  PHYSICAL
+}
+
+enum RewardStatus {
+  DRAFT
+  AVAILABLE
+  PAUSED
+  RETIRED
+}
+
+/// The redemption lifecycle:
+///   REQUESTED -> RESERVED -> APPROVED -> FULFILLED
+/// with REJECTED, CANCELLED and EXPIRED as terminal failures.
 enum RedemptionStatus {
   REQUESTED
+  RESERVED
   APPROVED
   FULFILLED
   REJECTED
   CANCELLED
+  EXPIRED
 }
 
 enum NotificationType {
@@ -1529,33 +1549,84 @@ model PointsLedger {
   @@index([createdAt])
 }
 
-model Reward {
-  id                         String     @id @default(cuid())
-  code                       String     @unique
+/// The reward catalogue.
+///
+/// `category` governs policy (what authorisation is required); `type` is the
+/// finer-grained kind used for presentation. Stock lives in `RewardInventory`
+/// so the counter that concurrency depends on is a row of its own.
+model RewardCatalog {
+  id                         String         @id @default(cuid())
+  code                       String         @unique
   name                       String
   description                String?
-  type                       RewardType @default(DIGITAL_BADGE)
-  costPoints                 Int        @default(0)
-  stock                      Int?
-  claimed                    Int        @default(0)
-  active                     Boolean    @default(true)
-  requiresApproval           Boolean    @default(false)
+  category                   RewardCategory @default(DIGITAL)
+  type                       RewardType     @default(DIGITAL_BADGE)
+  pointCost                  Int            @default(0)
+  status                     RewardStatus   @default(DRAFT)
+  requiresApproval           Boolean        @default(false)
   /// One-per-user rewards resolve to the cycle key "once"; repeatable rewards
   /// use a period key (e.g. "2026-W32"), which the unique index then enforces.
-  oncePerUser                Boolean    @default(true)
-  /// Physical/experience rewards must be explicitly authorised by production.
-  requiresProductionApproval Boolean    @default(false)
+  oncePerUser                Boolean        @default(true)
+  /// PHYSICAL and EXPERIENCE rewards cannot be published without production
+  /// sign-off; `authorisedById` records who gave it.
+  requiresProductionApproval Boolean        @default(false)
+  authorisedById             String?
+  authorisedAt               DateTime?
   disclaimer                 String?
   availableFrom              DateTime?
   availableUntil             DateTime?
   metadata                   Json?
   deletedAt                  DateTime?
-  createdAt                  DateTime   @default(now())
-  updatedAt                  DateTime   @updatedAt
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
 
+  inventory   RewardInventory?
+  rule        RewardRule?
   redemptions RewardRedemption[]
 
-  @@index([active, type])
+  @@index([status, category])
+  @@index([deletedAt])
+}
+
+/// Stock for one catalogue entry.
+///
+/// Separate from the catalogue because this is the row every concurrent
+/// redemption contends on. Claiming a unit is a single conditional UPDATE
+/// (`WHERE remaining > 0`), so the database serialises the contention and
+/// `remaining` can never go negative.
+model RewardInventory {
+  id          String   @id @default(cuid())
+  rewardId    String   @unique
+  /// Null means unlimited — a digital badge has no scarcity.
+  totalUnits  Int?
+  remaining   Int?
+  /// Held by redemptions that are reserved or approved but not yet fulfilled.
+  reserved    Int      @default(0)
+  fulfilled   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reward RewardCatalog @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+}
+
+/// Configurable eligibility for a reward, beyond simply affording it.
+model RewardRule {
+  id                  String   @id @default(cuid())
+  rewardId            String   @unique
+  /// Derived from lifetime points; see `levelForPoints`.
+  minLevel            Int      @default(0)
+  minLifetimePoints   Int      @default(0)
+  minActivities       Int      @default(0)
+  /// How many *different* features the user must have taken part in.
+  minDistinctFeatures Int      @default(0)
+  minAccountAgeDays   Int      @default(0)
+  /// Feature keys the user must have participated in, e.g. ["POLL","PREDICTION"].
+  requiredFeatures    String[]
+  description         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  reward RewardCatalog @relation(fields: [rewardId], references: [id], onDelete: Cascade)
 }
 
 model RewardRedemption {
@@ -1563,23 +1634,54 @@ model RewardRedemption {
   rewardId      String
   userId        String
   status        RedemptionStatus @default(REQUESTED)
-  costPoints    Int
+  pointsSpent   Int
   /// "once" for one-per-user rewards, otherwise a period key.
   cycleKey      String           @default("once")
+  /// The ledger row that debited the points. The debit is the source of truth;
+  /// this is a convenience pointer back to it.
   ledgerEntryId String?
+  /// The reversal row, once a cancellation has refunded the points.
+  refundEntryId String?
+  reservedAt    DateTime?
+  approvedAt    DateTime?
+  fulfilledAt   DateTime?
+  closedAt      DateTime?
+  expiresAt     DateTime?
   decidedById   String?
   decidedAt     DateTime?
   notes         String?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
-  reward Reward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward       RewardCatalog       @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fulfillments RewardFulfillment[]
 
   /// No duplicate reward claims — enforced by the database.
   @@unique([userId, rewardId, cycleKey])
   @@index([status, createdAt])
   @@index([userId, createdAt])
+  @@index([rewardId, status])
+}
+
+/// Append-only log of every redemption state change.
+///
+/// The redemption carries the *current* state; this carries how it got there —
+/// who moved it, when, and why. Two status columns that could disagree would be
+/// worse than useless, so this is a transition log rather than a second status.
+model RewardFulfillment {
+  id           String           @id @default(cuid())
+  redemptionId String
+  fromStatus   RedemptionStatus?
+  toStatus     RedemptionStatus
+  actorId      String?
+  note         String?
+  createdAt    DateTime         @default(now())
+
+  redemption RewardRedemption @relation(fields: [redemptionId], references: [id], onDelete: Cascade)
+
+  @@index([redemptionId, createdAt])
+  @@index([toStatus, createdAt])
 }
 
 // ===========================================================================

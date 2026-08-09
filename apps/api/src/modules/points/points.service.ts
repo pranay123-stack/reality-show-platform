@@ -117,7 +117,14 @@ export async function awardPoints(
   }
 }
 
-/** Debits a user, refusing to go negative. */
+/**
+ * Debits a user, refusing to go negative.
+ *
+ * The read below is only there to produce a helpful message before doing any
+ * work. It is *not* the guard — a read followed by a write is a race, and two
+ * concurrent spends could both pass it. The real guard is the conditional
+ * UPDATE in `applyLedgerEntry`, which checks and debits in one statement.
+ */
 export async function spendPoints(
   input: AwardInput & { points: number },
   client: Prisma.TransactionClient | typeof prisma = prisma,
@@ -132,11 +139,7 @@ export async function spendPoints(
 
   const balance = await readBalance(input.userId, client);
   if (balance < input.points) {
-    throw new AppError({
-      code: ERROR_CODES.INSUFFICIENT_POINTS,
-      message: `You need ${input.points.toLocaleString()} points and have ${balance.toLocaleString()}`,
-      statusCode: 400,
-    });
+    throw insufficientPoints(input.points, balance);
   }
 
   try {
@@ -199,6 +202,10 @@ export async function reverseEntry(
       metadata: { note: note ?? null, originalReason: original.reason },
       reversedEntryId: original.id,
       createdById: actorId,
+      // Undoing an award un-earns it; undoing a spend merely returns it. Only
+      // the first should move the user's lifetime total, and therefore their
+      // level.
+      lifetimeDelta: original.entryType === 'EARN' ? -original.delta : 0,
     });
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -224,6 +231,77 @@ interface LedgerWrite {
   metadata?: Prisma.InputJsonValue;
   reversedEntryId?: string;
   createdById?: string;
+  /**
+   * What this row does to *lifetime* points, which is a separate question from
+   * what it does to the balance. Set only by `reverseEntry`, which is the one
+   * caller that knows whether it is undoing an achievement or a purchase.
+   */
+  lifetimeDelta?: number;
+}
+
+function insufficientPoints(needed: number, balance: number): AppError {
+  return new AppError({
+    code: ERROR_CODES.INSUFFICIENT_POINTS,
+    message: `You need ${needed.toLocaleString()} points and have ${balance.toLocaleString()}`,
+    statusCode: 400,
+  });
+}
+
+/**
+ * A debit that cannot overdraw.
+ *
+ * The balance test lives in the WHERE clause, so checking and deducting are a
+ * single statement that the database serialises. Two simultaneous spends of the
+ * same points cannot both succeed: the second one blocks on the row lock, and
+ * Postgres re-evaluates the condition against the committed row afterwards, so
+ * it sees the reduced balance and matches nothing.
+ *
+ * Reading the balance back afterwards is safe because this transaction now
+ * holds the row lock — nobody else can move it until we commit.
+ */
+async function debitWithGuard(
+  tx: Prisma.TransactionClient,
+  write: LedgerWrite,
+): Promise<number> {
+  const debited = await tx.userProfile.updateMany({
+    where: { userId: write.userId, pointsBalance: { gte: -write.delta } },
+    data: { pointsBalance: { increment: write.delta }, lastActiveAt: new Date() },
+  });
+
+  if (debited.count === 0) {
+    throw insufficientPoints(-write.delta, await readBalance(write.userId, tx));
+  }
+
+  return readBalance(write.userId, tx);
+}
+
+/**
+ * Credits and administrative adjustments. A reversal is allowed to push a
+ * balance negative — clawing back points somebody has already spent is a
+ * deliberate act, and hiding it behind a silent failure would be worse.
+ *
+ * Only an EARN moves lifetime points, because lifetime points are what levels
+ * and eligibility are built on. A refund returns what you spent; it is not a
+ * new achievement, and letting it count would make redeem-then-cancel a way to
+ * farm levels for free.
+ */
+async function creditOrAdjust(
+  tx: Prisma.TransactionClient,
+  write: LedgerWrite,
+): Promise<number> {
+  const lifetimeDelta =
+    write.lifetimeDelta ?? (write.entryType === 'EARN' && write.delta > 0 ? write.delta : 0);
+
+  const profile = await tx.userProfile.update({
+    where: { userId: write.userId },
+    data: {
+      pointsBalance: { increment: write.delta },
+      ...(lifetimeDelta !== 0 ? { lifetimePoints: { increment: lifetimeDelta } } : {}),
+      lastActiveAt: new Date(),
+    },
+    select: { pointsBalance: true },
+  });
+  return profile.pointsBalance;
 }
 
 async function applyLedgerEntry(
@@ -231,23 +309,16 @@ async function applyLedgerEntry(
   client: Prisma.TransactionClient | typeof prisma = prisma,
 ): Promise<AwardResult> {
   const run = async (tx: Prisma.TransactionClient) => {
-    // Atomic row-level increment: two concurrent awards each get a distinct,
-    // correct balanceAfter without a read-modify-write race.
-    const profile = await tx.userProfile.update({
-      where: { userId: write.userId },
-      data: {
-        pointsBalance: { increment: write.delta },
-        ...(write.delta > 0 ? { lifetimePoints: { increment: write.delta } } : {}),
-        lastActiveAt: new Date(),
-      },
-      select: { pointsBalance: true },
-    });
+    const balanceAfter =
+      write.entryType === 'SPEND'
+        ? await debitWithGuard(tx, write)
+        : await creditOrAdjust(tx, write);
 
     const entry = await tx.pointsLedger.create({
       data: {
         userId: write.userId,
         delta: write.delta,
-        balanceAfter: profile.pointsBalance,
+        balanceAfter,
         entryType: write.entryType,
         sourceType: write.sourceType,
         sourceId: write.sourceId,
@@ -259,7 +330,7 @@ async function applyLedgerEntry(
       select: { id: true },
     });
 
-    return { applied: true, delta: write.delta, balance: profile.pointsBalance, entryId: entry.id };
+    return { applied: true, delta: write.delta, balance: balanceAfter, entryId: entry.id };
   };
 
   // Already inside a caller's transaction? Join it — nesting would deadlock.

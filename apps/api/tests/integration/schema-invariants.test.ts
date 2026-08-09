@@ -330,37 +330,37 @@ describe('points ledger', () => {
 
 describe('reward redemption', () => {
   it('refuses a duplicate claim of a one-per-user reward', async () => {
-    const reward = await db.reward.create({
-      data: { code: 'TEST_BADGE', name: 'Test Badge', costPoints: 0, oncePerUser: true },
+    const reward = await db.rewardCatalog.create({
+      data: { code: 'TEST_BADGE', name: 'Test Badge', pointCost: 0, oncePerUser: true },
     });
 
     await db.rewardRedemption.create({
-      data: { rewardId: reward.id, userId: userA, costPoints: 0, cycleKey: 'once' },
+      data: { rewardId: reward.id, userId: userA, pointsSpent: 0, cycleKey: 'once' },
     });
 
     await expect(
       db.rewardRedemption.create({
-        data: { rewardId: reward.id, userId: userA, costPoints: 0, cycleKey: 'once' },
+        data: { rewardId: reward.id, userId: userA, pointsSpent: 0, cycleKey: 'once' },
       }),
     ).rejects.toMatchObject({ code: 'P2002' });
   });
 
   it('allows a repeatable reward once per cycle key', async () => {
-    const reward = await db.reward.create({
-      data: { code: 'TEST_BOOST', name: 'Test Boost', costPoints: 10, oncePerUser: false },
+    const reward = await db.rewardCatalog.create({
+      data: { code: 'TEST_BOOST', name: 'Test Boost', pointCost: 10, oncePerUser: false },
     });
 
     await db.rewardRedemption.create({
-      data: { rewardId: reward.id, userId: userA, costPoints: 10, cycleKey: '2026-W32' },
+      data: { rewardId: reward.id, userId: userA, pointsSpent: 10, cycleKey: '2026-W32' },
     });
     await expect(
       db.rewardRedemption.create({
-        data: { rewardId: reward.id, userId: userA, costPoints: 10, cycleKey: '2026-W33' },
+        data: { rewardId: reward.id, userId: userA, pointsSpent: 10, cycleKey: '2026-W33' },
       }),
     ).resolves.toBeTruthy();
     await expect(
       db.rewardRedemption.create({
-        data: { rewardId: reward.id, userId: userA, costPoints: 10, cycleKey: '2026-W32' },
+        data: { rewardId: reward.id, userId: userA, pointsSpent: 10, cycleKey: '2026-W32' },
       }),
     ).rejects.toMatchObject({ code: 'P2002' });
   });
