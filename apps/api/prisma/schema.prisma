@@ -1281,11 +1281,15 @@ model KitchenDecision {
   maxSelections Int                   @default(1)
   /// Hard ceiling on the quantity the resolved decision may buy.
   maxQuantity   Int?
+  /// How many options the resolved decision actually buys. Independent of
+  /// `maxSelections`, which is how many a *user* may pick.
+  winnerCount   Int                   @default(1)
   weighting     Json?
   totalVotes    Int                   @default(0)
-  /// Server-computed outcome: chosen options, their cost, remaining budget.
-  result        Json?
-  resultCost    Int?
+  /// Credited once per user per decision, on their first vote.
+  participationPoints Int             @default(4)
+  /// Credited to users who backed an option production actually implemented.
+  bonusPoints   Int                   @default(0)
   finalizedAt   DateTime?
   finalizedById String?
   createdById   String?
@@ -1298,6 +1302,7 @@ model KitchenDecision {
 
   options KitchenOption[]
   votes   KitchenVote[]
+  result  KitchenResult?
 
   @@index([showId, status])
   @@index([status, closesAt])
@@ -1338,6 +1343,37 @@ model KitchenVote {
   @@unique([decisionId, userId, optionId])
   @@index([decisionId, userId])
   @@index([optionId])
+}
+
+/// The outcome of a kitchen decision, kept as its own entity because it holds
+/// two genuinely different things:
+///
+///   `audienceResult`     — what the audience voted for, computed server-side
+///                          within the budget. Advisory.
+///   `implementedResult`  — what the house was actually given, recorded by
+///                          production. Only this spends real budget.
+///
+/// Same principle as nomination/eviction: the audience decision is never
+/// silently promoted into the official execution.
+model KitchenResult {
+  id                String    @id @default(cuid())
+  decisionId        String    @unique
+  /// Ranked options, their cost, what was skipped for budget, remaining budget.
+  audienceResult    Json
+  audienceCost      Int       @default(0)
+  publishedById     String
+  publishedAt       DateTime  @default(now())
+  implementedResult Json?
+  implementedCost   Int?
+  implementedNote   String?
+  implementedById   String?
+  implementedAt     DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  decision KitchenDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@index([implementedAt])
 }
 
 // ===========================================================================

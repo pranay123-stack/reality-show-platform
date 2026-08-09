@@ -38,6 +38,7 @@ const TABLES_IN_DELETION_ORDER = [
   'WeekendParticipationRound',
   'KitchenVote',
   'KitchenOption',
+  'KitchenResult',
   'KitchenDecision',
   'KitchenBudget',
   'RoundVoteAllowance',

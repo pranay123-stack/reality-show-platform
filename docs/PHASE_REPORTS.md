@@ -930,3 +930,119 @@ truncation list, so allowance rows leaked between tests and `findFirst` picked u
 The table is now truncated with the rest. A fourth "failure" was my own assertion being wrong about
 whether total participation should be hidden — it should not be, and the reasoning is now a comment
 in the code rather than a silent behaviour.
+
+---
+
+## Phase 12 — Kitchen Control
+
+### Entities
+
+`KitchenBudget` · `KitchenDecision` · `KitchenOption` · `KitchenVote` existed from Phase 2.
+This phase added **`KitchenResult`** and the configuration a decision needs to resolve itself
+(`winnerCount`, `participationPoints`, `bonusPoints`), and dropped the decision's old
+`result` / `resultCost` columns.
+
+Those two columns were replaced rather than reused because a single JSON blob could not express the
+distinction the module depends on. `KitchenResult` holds both sides explicitly:
+
+| Field | Meaning |
+| --- | --- |
+| `audienceResult`, `audienceCost` | what the audience voted for, resolved within the budget — **advisory** |
+| `implementedResult`, `implementedCost` | what production actually gave the house — **the only thing that spends budget** |
+
+Neither column was read by any code, so nothing was lost. Migration `20260810140000_kitchen_result`.
+
+### Audience decision ≠ official execution
+
+The same principle as nomination/eviction, enforced structurally:
+
+| | Audience decision | Official execution |
+| --- | --- | --- |
+| Field | `audienceResult` | `implementedResult` |
+| Endpoint | `POST /kitchen/admin/:id/publish-audience-result` | `POST /kitchen/admin/:id/implement` |
+| Permission | `round.publish` | `official.publish` |
+| Derived from votes? | yes, within budget | **no** — production states what it did |
+| Spends budget? | **no** | yes |
+
+`KITCHEN_RESULT_DISCLAIMER` ships on every decision payload, published or not. The UI renders the
+two as separate cards; where the implementation is missing it says *"Not recorded yet. What the
+audience chose does not decide this on its own."*, and where they differ it shows a
+**"Differed from the audience"** badge.
+
+### The audience never touches the money
+
+- A vote carries **option ids only** — no cost, no quantity, no budget. There is no field in the
+  contract for one, and a test posts `unitCost: 0, budget: 999999` alongside a vote to confirm the
+  stored values are unchanged.
+- `unitCost` is producer-set and read from the database on every calculation.
+- `KitchenBudget.spentUnits` moves in exactly one place: recording the implementation, behind an
+  atomic guard `WHERE spentUnits <= totalUnits - cost` that cannot overdraw.
+
+### Budget resolution (`budget.ts`, pure and unit-tested)
+
+Greedy by popularity under three independent caps — `winnerCount`, remaining budget, and
+`maxQuantity` — with every rejected option recorded together with **why** (`BUDGET`, `QUANTITY`,
+`WINNER_LIMIT`) so the UI can show "wanted, but not possible".
+
+Greedy rather than a knapsack search on purpose: the audience is expressing a preference order, and
+quietly buying a less popular combination because it packs the budget better would misrepresent the
+vote. Ranking is deterministic — score, then raw votes, then the producer's ordering — so a
+recomputed result is reproducible, and weighting shifts the ranking without touching the head count.
+
+### Security, following the established patterns
+
+| Concern | Mechanism |
+| --- | --- |
+| Duplicate votes | `@@unique([decisionId, userId, optionId])`; a P2002 rolls back the whole request |
+| Selection limits | atomic claim on `RoundVoteAllowance` (`roundType: 'KITCHEN'`), one `UPDATE ... WHERE votesUsed < limit` per option |
+| Votes after closing | checked against the clock on entry **and** re-checked inside the transaction, so a concurrent close cannot leave a vote counted against a closed decision |
+| Unaffordable options | refused up front with `BUDGET_EXCEEDED` — an option the house could never buy is not a real choice |
+| Transactions | picks, counters and the decision total all move together; a partial pick is impossible |
+| Audit | every operator action writes an `AuditLog` + `AdminAction` row |
+| Authorisation | `kitchen.manage` for lifecycle, `round.publish` and `official.publish` for the two results |
+
+### Points, through the ledger only
+
+`awardPoints` is the only path; no balance is ever written directly.
+
+- **Participation** — credited once per decision on the first pick, not once per option.
+- **Special kitchen event reward** — `bonusPoints` credited to users who backed something
+  production actually implemented, idempotent through the ledger's unique constraint.
+
+### Results actually observed
+
+**55 new tests** — 16 unit (`budget.ts`) + 39 integration. Full suite: **280 API tests** across 18
+files, plus 7 shared.
+
+All eight required integration scenarios, and more:
+
+| # | Required scenario | Covered by |
+| --- | --- | --- |
+| 1 | User sees active kitchen decision | lists with options and budget; costs public but the split hidden while open; drafts invisible; unaffordable options flagged |
+| 2 | User votes successfully | pick recorded, ledger credited, multi-pick, withdraw and re-cast, foreign option rejected, anonymous/unverified refused |
+| 3 | Duplicate vote blocked | same option twice → `VOTE_DUPLICATE` with the allowance untouched; same id twice in one request; a mixed pair rolls back entirely |
+| 4 | Closed decision rejects votes | status `CLOSED`; past the deadline while still `OPEN`; before opening; withdrawal after close |
+| 5 | Budget limits enforced | unaffordable pick refused; unaffordable option dropped from the result with reason `BUDGET`; quantity ceiling honoured; over-budget implementation refused with spend untouched; budget moves only on implementation |
+| 6 | Concurrent voting | 4 racing picks against a limit of 2 land exactly 2; 10 simultaneous voters counted exactly once with per-option counts summing to the total; votes racing the close never half-applied |
+| 7 | Audience ≠ implemented | stored separately, allowed to disagree, match flagged when identical, disclaimer always present, bonus paid only to backers, double implementation refused, implementation before publication refused |
+| 8 | Unauthorised admin action rejected | every operator route refused to a user (403) and to a moderator; anonymous → 401 |
+
+### Live verification against a running stack
+
+- Voted two picks as `viewer1` → `used=2 remaining=0 points=+4`; a third pick → `VOTE_LIMIT_REACHED`;
+  an admin close as the same viewer → **403**.
+- Producer flow: close → publish audience result → **Rice (50%) selected, Vegetables skipped as
+  `WINNER_LIMIT`**, budget unchanged at ₹4,300 spent.
+- Production then implemented **Chicken** instead: `matchesAudience: false`, the audience record
+  still reading Rice, and budget moving 4,300 → 6,700 only at that point.
+- `/kitchen` verified at 1440/834/390 — 0 px horizontal overflow at every breakpoint, sidebar on
+  desktop and bottom nav below it. The "Decided" tab renders both result cards with the
+  "Differed from the audience" badge.
+
+`pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 287 passed · `pnpm build` 4/4.
+
+### Note
+
+One integration test initially failed because its setup produced a 1–1 tie, resolved by the
+producer's option ordering rather than by the quantity ceiling it claimed to test. The setup now
+gives the intended option a clear lead, with a comment explaining why.
