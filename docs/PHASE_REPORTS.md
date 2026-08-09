@@ -564,3 +564,105 @@ The tests cover exactly what the phase asked for and more:
 - cannot open a draft whose close time has passed; cannot edit a live prediction
 
 `pnpm typecheck` 7/7 · `pnpm lint` 5/5 · `pnpm build` 4/4 · `pnpm test` 120 passed (113 api + 7 shared).
+
+---
+
+## Phase 8 — Audience Challenges
+
+### Lifecycle, and who can move each step
+
+```
+DRAFT ─(author)→ SUBMITTED ─(auto)→ MODERATION
+  MODERATION ─(moderator)→ APPROVED | REJECTED
+  APPROVED ─(producer)→ COMMUNITY_VOTING
+  COMMUNITY_VOTING ─(producer, ranked)→ TOP_CHALLENGES
+  TOP_CHALLENGES ─(producer)→ PRODUCER_REVIEW
+  PRODUCER_REVIEW ─(producer)→ SELECTED | REJECTED
+  SELECTED ─(producer)→ EXECUTED ─(producer)→ COMPLETED
+```
+
+Every transition is checked against an allow-list; an illegal move returns
+`INVALID_STATE_TRANSITION`. **Nothing skips moderation** — a challenge can only reach community
+voting after a human has approved it, and unapproved work is invisible to everyone but its author.
+
+### Rules, and where each is enforced
+
+| Rule | Enforcement |
+| --- | --- |
+| One vote per user per challenge | `@@unique([challengeId, userId])` |
+| No voting for your own challenge | `SELF_VOTE_FORBIDDEN` before the insert |
+| Moderation required | `VOTABLE_STATUSES` gate + hidden from feed until approved |
+| Abuse reporting | `@@unique([challengeId, reporterId])`, 3 reports escalate |
+| Profanity / spam validation | `content-moderation.ts`, block vs. flag |
+| Rate limits | 10 challenges/hour per user, plus a hard cap of 5 in-flight submissions |
+
+### Content screening — a triage tool, not a censor
+
+`screenContent()` returns `block`, `flag` or `clean`:
+
+- **block** — unambiguous slurs, and anything organising real-world harm (deprivation of food,
+  water or sleep; hitting; self-harm). These are refused with a reason the author can act on.
+- **flag** — links, contact details, shouting, repetition, low word variety. These are *accepted*
+  and escalated for a human, never auto-rejected.
+
+Ambiguity always flags rather than blocks: a false block silently loses a legitimate contribution
+and the author never learns why, which is worse than a moderator reading one extra item.
+
+Writing the tests caught two real evasions the first implementation missed, both now fixed:
+
+1. `s h i t` survived because collapsing spaced-out letters greedily swallowed the neighbouring
+   words (`should s h i t about` → `shouldshitabout`), destroying the word boundary the matcher
+   needed. The collapse is now anchored on word boundaries at both ends.
+2. `shhhiiit` survived because repeated letters collapsed to *two* characters. Text and blocked
+   terms now go through the same collapse-to-one, so they always agree.
+
+### Top-N ranking (`ranking.ts`, pure and configurable)
+
+`score = (votes·w₁ + recency·w₂ + authorTrust·w₃) / Σw`, weights per cycle from
+`ChallengeCycle.rankingConfig`, defaulting to 0.7 / 0.2 / 0.1.
+
+- Votes are square-root normalised, so a runaway favourite does not zero everyone else.
+- Recency exists so a challenge submitted in the last hour is not automatically buried.
+- Author trust is a nudge, never a gate — a first-time submitter with the most votes still wins,
+  and there is a test asserting exactly that.
+- Ties break on raw votes, then on who submitted first. Input order never changes the outcome.
+
+### Points paid through the ledger
+
+submission 10 · approved 15 · top-3 75 · selected 200 — all via `awardPoints`, so all idempotent.
+
+### Web added
+
+`/challenges` (Vote now / Top challenges / On the show / Mine), `/challenges/new` (with live
+character count, house-vs-contestant targeting and an up-front statement of what gets rejected),
+`/challenges/[id]` (full text, vote, report modal, and a lifecycle tracker showing where it is),
+and `/admin/challenges` (moderation queue with the automatic flags surfaced so a moderator knows
+why something was escalated).
+
+### Results actually observed
+
+- **43 new tests**: 9 ranking, 8 content-screening, 26 integration. Full suite **156 API tests**
+  across 13 files, plus 7 shared.
+- Integration coverage includes: submission points, abusive content refused (422, nothing stored),
+  deprivation refused, spam-flagged content accepted-but-escalated, drafts not paid, flood cap at
+  five in-flight, unverified email refused, unmoderated challenges invisible in the feed and 404
+  to strangers but visible to their author, moderation refused to ordinary users, approval credits
+  the author and writes a `ModerationDecision` + audit row, moderator-only fields never leaking
+  into the public view, duplicate vote refused, self-vote refused, voting before approval refused,
+  withdraw-and-recast, per-viewer vote-blocked reasons, duplicate report refused, three reports
+  escalate without removing the challenge, the full production path paying 300 points in four
+  correctly-named ledger entries, lifecycle steps that cannot be skipped, `topN` respected, and
+  production actions refused to a moderator.
+- Live against a running stack: created a challenge over HTTP as `viewer2`, approved and opened
+  voting as `producer`, and confirmed a **self-vote returns `SELF_VOTE_FORBIDDEN`**.
+- UI verified at 1440/834/390: 0 px horizontal overflow at every breakpoint, correct heading,
+  sidebar on desktop and bottom nav below it. The rendered feed showed the right per-card state —
+  "You cannot vote for your own challenge", "Voted — undo", and an active Vote button.
+- `pnpm typecheck` 7/7 · `pnpm lint` 5/5 · `pnpm build` 4/4.
+
+### One more real bug found and fixed
+
+The Phase 5 fix for the duplicated episode title (`Episode 12 · Episode 12 — Nomination Night`)
+had never reached the database: the seed's `upsert` set `title` only in its `create` branch, so
+re-seeding silently kept the stale value. The upsert now updates the title too, and a re-seed
+corrected the live data — confirmed via `GET /show/live`.

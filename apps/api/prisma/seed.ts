@@ -280,7 +280,7 @@ async function seedShow() {
 
   await prisma.episode.upsert({
     where: { id: PREVIOUS_EPISODE_ID },
-    update: {},
+    update: { title: 'The Broken Alliance' },
     create: {
       id: PREVIOUS_EPISODE_ID,
       showId: SHOW_ID,
@@ -297,7 +297,7 @@ async function seedShow() {
 
   await prisma.episode.upsert({
     where: { id: EPISODE_ID },
-    update: { status: 'LIVE', isLive: true },
+    update: { status: 'LIVE', isLive: true, title: 'Nomination Night' },
     create: {
       id: EPISODE_ID,
       showId: SHOW_ID,

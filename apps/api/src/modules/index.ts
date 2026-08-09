@@ -2,6 +2,7 @@ import { API_PREFIX } from '@reality/shared';
 import type { FastifyInstance } from 'fastify';
 
 import { authRoutes } from './auth/auth.routes.js';
+import { challengeRoutes } from './challenges/challenges.routes.js';
 import { contestantRoutes } from './contestants/contestants.routes.js';
 import { dashboardRoutes } from './dashboard/dashboard.routes.js';
 import { healthRoutes } from './health/health.routes.js';
@@ -9,7 +10,7 @@ import { predictionRoutes } from './predictions/predictions.routes.js';
 import { showRoutes } from './show/show.routes.js';
 import { userRoutes } from './users/users.routes.js';
 
-const MODULES = ['health', 'auth', 'users', 'show', 'dashboard', 'contestants', 'predictions'];
+const MODULES = ['health', 'auth', 'users', 'show', 'dashboard', 'contestants', 'predictions', 'challenges'];
 
 /**
  * Single registration point for every feature module.
@@ -30,6 +31,7 @@ export async function registerModules(app: FastifyInstance): Promise<void> {
       await api.register(dashboardRoutes, { prefix: '/dashboard' });
       await api.register(contestantRoutes, { prefix: '/contestants' });
       await api.register(predictionRoutes, { prefix: '/predictions' });
+      await api.register(challengeRoutes, { prefix: '/challenges' });
     },
     { prefix: API_PREFIX },
   );
