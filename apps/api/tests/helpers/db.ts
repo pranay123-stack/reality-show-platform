@@ -40,6 +40,7 @@ const TABLES_IN_DELETION_ORDER = [
   'KitchenOption',
   'KitchenDecision',
   'KitchenBudget',
+  'RoundVoteAllowance',
   'EvictionVote',
   'EvictionCandidate',
   'EvictionRound',

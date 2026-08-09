@@ -840,3 +840,93 @@ number that could only have come from the server.
 - HTTP voting (`POST /polls/:id/vote`) alongside the socket path, so a client behind a proxy that
   blocks WebSockets can still take part under identical server-side rules.
 - `apps/web/scripts/verify-realtime.mjs` — the two-tab harness used above, kept for reuse.
+
+---
+
+## Phase 11 — Nomination & Eviction
+
+### Two systems, one implementation
+
+Nomination and Eviction are separate systems with separate tables, separate rounds and separate
+permissions (`nomination.manage` / `eviction.manage`). The mechanics are identical, so the logic
+lives once in `rounds.service.ts` parameterised by round type, and the router is built twice. An
+eviction round additionally carries `voteMeaning` (`SAVE` or `EVICT`), configured per show.
+
+### Vote limits — the part that needed real thought
+
+`@@unique([roundId, userId, contestantId])` stops a user voting twice for the *same* contestant, but
+nothing in the schema stopped them spreading more votes than the round allows across *different*
+contestants. A read-then-write check would let two concurrent requests both pass.
+
+The fix is a new `RoundVoteAllowance` row per (roundType, roundId, user), and voting claims from it
+with a single conditional statement:
+
+```
+UPDATE "RoundVoteAllowance" SET "votesUsed" = "votesUsed" + 1
+WHERE roundType = ? AND roundId = ? AND userId = ? AND "votesUsed" < <limit>
+```
+
+Zero rows matched means the allowance is spent. No read-then-write window, no serialisable retry
+loop. The claim and the vote insert share one transaction, so:
+
+- a rejected **duplicate** rolls back the claim — being refused never costs you a vote
+- a **withdrawal** returns the vote to the allowance, so changing your mind actually works
+- the limit is read from the round at request time, so raising it mid-round takes effect immediately
+
+### The rule that matters most
+
+> The audience result and the show's official outcome are different things.
+
+Enforced structurally, not just in copy:
+
+| | Audience result | Official outcome |
+| --- | --- | --- |
+| Column | `audienceResult` | `officialOutcome` |
+| Endpoint | `/publish-audience-result` | `/publish-official-outcome` |
+| Permission | `round.publish` | `official.publish` |
+| Derived from votes? | yes | **no** — a producer states what the show did |
+| Nomination records | `source: AUDIENCE` | `source: OFFICIAL` |
+
+`AUDIENCE_RESULT_DISCLAIMER` is returned on **every** round payload, published or not, so no client
+can render a result without the caveat. The UI shows the two in separate cards, and where the
+official outcome is absent it says in plain words: *"Not announced yet. The audience result above
+does not decide this."*
+
+A test asserts the official outcome can disagree with the audience (audience favours A, production
+announces D) and that publishing one never touches the other.
+
+### Other decisions
+
+- **Live standings are hidden until publication**, so late voters cannot pile onto whoever is ahead.
+  Total participation *is* public — knowing 2,000 people voted says nothing about who leads.
+- **Weighting** applies to `weightedScore` only; `voteCount` stays an honest head count.
+- **Participation points are credited once per round**, not once per vote.
+- Voting is confirmed through a modal that states how many votes will remain.
+
+### Results actually observed
+
+**22 new integration tests**, all passing. Full suite: **225 API tests** across 16 files, plus 7 shared.
+
+Vote-limit scenarios covered exactly as the phase asked: exact allowance then refusal, a limit of
+one, **four concurrent votes against an allowance of two landing exactly two** (with stored state
+matching what clients were told), duplicates not consuming an allowance, withdrawal restoring one,
+allowances tracked separately per user and per round, and a raised limit taking effect for a user
+already at the old one.
+
+Also covered: voting before the round opens, after the deadline while the status still says `OPEN`,
+for an ineligible contestant, for a contestant not in the round; standings hidden until published;
+audience vs official separation end to end; the disclaimer always present; official outcome refused
+without `official.publish`; audience and official nominations recorded under different sources;
+operator actions refused to ordinary users; create/open/close with three audit rows; rounds needing
+at least two contestants; mid-round eligibility changes; weighting affecting only the weighted
+score; and participation credited once per round.
+
+`pnpm typecheck` 7/7 · `pnpm lint` 5/5 · `pnpm build` 4/4.
+
+### A test-harness bug worth recording
+
+Three tests failed initially because `RoundVoteAllowance` was missing from the integration suite's
+truncation list, so allowance rows leaked between tests and `findFirst` picked up a stranger's row.
+The table is now truncated with the rest. A fourth "failure" was my own assertion being wrong about
+whether total participation should be hidden — it should not be, and the reasoning is now a comment
+in the code rather than a silent behaviour.

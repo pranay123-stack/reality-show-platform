@@ -1155,6 +1155,28 @@ model NominationVote {
   @@index([contestantId])
 }
 
+/// Per-user vote allowance for a nomination or eviction round.
+///
+/// The unique vote constraints stop a user voting twice for the *same*
+/// contestant, but nothing stops them spreading more votes than the round
+/// allows across different contestants. This row is what makes the limit
+/// enforceable atomically: voting is a conditional `UPDATE ... WHERE votesUsed
+/// < limit`, which either increments or matches nothing. No read-then-write
+/// window, no serialisable retry loop.
+model RoundVoteAllowance {
+  id        String   @id @default(cuid())
+  roundType String
+  roundId   String
+  userId    String
+  votesUsed Int      @default(0)
+  voteLimit Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([roundType, roundId, userId])
+  @@index([roundId])
+}
+
 model EvictionRound {
   id                    String      @id @default(cuid())
   showId                String
