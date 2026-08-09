@@ -1,6 +1,6 @@
 # Build status
 
-**Last updated:** end of Phase 7.
+**Last updated:** end of Phase 11.
 
 Everything below was executed and observed, not assumed. Per-phase detail is in
 [`PHASE_REPORTS.md`](PHASE_REPORTS.md); the design is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -13,15 +13,15 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | --- | --- | --- |
 | Typecheck | `pnpm typecheck` | 7/7 packages |
 | Lint | `pnpm lint` | 5/5 packages, 0 warnings |
-| Tests | `pnpm test` | **120 passed** (113 API across 10 files, 7 shared) |
+| Tests | `pnpm test` | **232 passed** (225 API across 16 files, 7 shared) |
 | Build | `pnpm build` | 4/4 (API bundle + Next production build) |
-| Migrations | `prisma migrate deploy` | 3 migrations, applied cleanly |
+| Migrations | `prisma migrate deploy` | 4 migrations, applied cleanly |
 | Seed | `pnpm db:seed` | idempotent, completes |
 | Runtime | API + web started, flows exercised via curl and headless Chromium | see below |
 
 ---
 
-## Phases complete: 0 – 7
+## Phases complete: 0 – 11
 
 | Phase | Delivered |
 | --- | --- |
@@ -33,6 +33,10 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | **5** | Authenticated shell (sidebar / top bar / drawer / bottom nav) + API-backed dashboard with live state, points, rank, activity and hottest contestants |
 | **6** | `ContestantHeatService` (pure, testable, configurable), snapshots, 24h/7d/season charts, admin inspect endpoint — **plus the points ledger core** (`awardPoints`/`spendPoints`/`reverseEntry`) needed from Phase 7 on |
 | **7** | Prediction Game end to end: submit, duplicate + closed guards, operator lifecycle state machine, transactional idempotent payout, audit trail |
+| **8** | Audience Challenges: 11-state lifecycle gated on human moderation, content screening (block vs flag), configurable top-N ranking, abuse reporting with escalation |
+| **9** | Audience Perspective: event-anchored opinion polling, kept structurally distinct from live polls, with historical consensus analytics |
+| **10** | Live Polls over WebSockets: Socket.IO + Redis adapter, race-safe close, 250 ms coalesced broadcast, split rooms so the tally stays off the wire for non-voters |
+| **11** | Nomination & Eviction: atomic per-user vote allowances, and a hard structural separation between the audience result and the show's official outcome |
 
 ### Things worth knowing
 
@@ -43,25 +47,22 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 - The **points ledger core landed in Phase 6**, ahead of its nominal Phase 14, because Phase 7
   depends on it. Phase 14 still owes the reward catalogue, redemption flow, admin visibility and
   the concurrency test suite.
-- Twelve feature routes are still 404 (`/polls`, `/challenges`, …). The sidebar prefetches them,
+- Remaining 404 routes: `/weekend`, `/kitchen`, `/leaderboard`, `/rewards`, `/notifications`,
+  `/admin` (the `/admin/challenges` moderation queue does exist). The sidebar prefetches them,
   which is the only source of console errors in the app today.
 
 ---
 
-## Remaining: Phases 8 – 24
+## Remaining: Phases 12 – 24
 
 | Phase | Scope | Notes for whoever picks this up |
 | --- | --- | --- |
-| 8 | Audience Challenges | Schema, cycles and moderation states already exist. Needs service + 11-state lifecycle + moderation UI. Self-vote and duplicate-vote guards: `ChallengeVote` already has the unique constraint. |
-| 9 | Audience Perspective | Schema done. Keep it distinct from live polls — perspective is *opinion about a past event*. |
-| 10 | Live Polls over WebSockets | Socket.IO + `@socket.io/redis-adapter` are already installed. Contract is written in `ARCHITECTURE.md` §6, including the 250 ms coalesced broadcast and the version counter. Also add the close job that flips expired `ACTIVE` polls. |
-| 11 | Nomination & Eviction | Vote-limit enforcement needs a serialisable transaction against `maxVotesPerUser`. `audienceResult` and `officialOutcome` are already separate columns. |
 | 12 | Kitchen Control | Budget maths must be server-side; `KitchenOption.unitCost` is never accepted from a client. |
 | 13 | Weekend Participation | `allowPhysicalRewards` defaults to false and needs the `weekend.physical_rewards` permission to enable. |
 | 14 | Points & Rewards | Core exists. Owes: reward catalogue, redemption, reversal admin UI, **concurrency tests**. |
 | 15 | Leaderboards | Replace the provisional `computeRank` in `dashboard.service.ts` with Redis-backed ranking. |
-| 16 | Notifications | Models and preferences exist; `/notifications` route is referenced by the shell but not built. |
-| 17 | Admin/Producer dashboard | `writeAudit` and the permission catalogue are ready. |
+| 16 | Notifications | Models and preferences exist; `/notifications` route is referenced by the shell but not built. The realtime layer already has a `user:{id}` room and a `points:awarded` emitter to build on. |
+| 17 | Admin/Producer dashboard | `writeAudit` and the permission catalogue are ready; `/admin/challenges` (moderation queue) already exists as a template. |
 | 18 | Security hardening | Idempotency-key table exists but is not yet wired into vote endpoints. |
 | 19 | Analytics | `AnalyticsEvent` + rollup models exist; taxonomy is in `ANALYTICS_EVENT_NAMES`. |
 | 20 | UI/UX polish | Loading/empty/error states already exist as components. |
