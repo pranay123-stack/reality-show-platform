@@ -15,7 +15,7 @@ import { ACCOUNTS, settle, signIn } from './helpers';
  * `routes.spec.ts`, which does run at all three widths.
  */
 test.describe.configure({ mode: 'serial' });
-test.skip(({ }, testInfo) => testInfo.project.name !== 'desktop', 'flow coverage runs once');
+test.skip((_, testInfo) => testInfo.project.name !== 'desktop', 'flow coverage runs once');
 
 test.describe('a viewer plays along', () => {
   test('signs in and lands on a dashboard that knows who they are', async ({ page }) => {

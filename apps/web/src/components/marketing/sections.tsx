@@ -7,17 +7,20 @@ import {
   ContestantCard,
   Countdown,
   LeaderboardRow,
-  LiveIndicator,
   OptionResult,
   StatCard,
 } from '@reality/ui';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Flame, Gift, Trophy, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
 
+import { FeatureGrid } from '@/components/marketing/feature-grid';
+import { EngagementStat, EpisodeBadge, LiveBadge } from '@/components/system/premium';
+import { fadeIn, fadeUp, stagger, wordFade, wordReveal, wordStagger } from '@/lib/motion';
+
 import { env } from '@/lib/env';
 import {
-  featurePillars,
   howItWorks,
   landingContestants,
   landingLeaderboard,
@@ -32,47 +35,153 @@ import {
 export function Hero() {
   return (
     <section className="relative overflow-hidden">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-24 h-[720px] bg-grid-fade"
-      />
+      <HeroAtmosphere />
 
       <div className="container relative grid gap-12 py-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-28">
-        <div className="space-y-7">
-          <LiveIndicator label="Episode 12 · on air now" />
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          animate="visible"
+          className="space-y-7"
+        >
+          <motion.div variants={fadeUp} className="flex flex-wrap items-center gap-2.5">
+            <LiveBadge label="Live now" />
+            <EpisodeBadge episode={12} status="On air" />
+          </motion.div>
 
-          <h1 className="text-display-xl font-semibold">
-            Stop watching the show.
-            <br />
-            <span className="bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
-              Start playing it.
-            </span>
-          </h1>
+          <HeroTitle />
 
-          <p className="max-w-xl text-lg text-muted">
+          <motion.p variants={fadeUp} className="max-w-xl text-lg text-muted">
             {env.appName} is the second screen for a live reality show. Predict what happens next,
             vote in polls while they run, write the challenges the house attempts, and watch the
             contestant heat meter move in real time.
-          </p>
+          </motion.p>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <motion.div variants={fadeUp} className="flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
               <Link href="/signup">Create a free account</Link>
             </Button>
             <Button asChild size="lg" variant="secondary">
               <Link href="#how-it-works">See how it works</Link>
             </Button>
-          </div>
+          </motion.div>
 
-          <p className="text-sm text-muted">
+          <motion.div
+            variants={fadeUp}
+            className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted"
+          >
+            <EngagementStat
+              value={12_480}
+              label="viewers playing"
+              icon={<Users className="h-4 w-4 text-accent" aria-hidden />}
+            />
+            <span aria-hidden className="hidden h-4 w-px bg-white/10 sm:block" />
+            <EngagementStat
+              value={3_910}
+              label="votes a minute"
+              icon={<Flame className="h-4 w-4 text-primary" aria-hidden />}
+            />
+          </motion.div>
+
+          <motion.p variants={fadeUp} className="text-sm text-muted">
             Free to play. No payments, no betting, no cash prizes — points are for entertainment
             only.
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
 
-        <LivePreviewPanel />
+        <motion.div variants={fadeIn} initial="hidden" animate="visible">
+          <LivePreviewPanel />
+        </motion.div>
       </div>
     </section>
+  );
+}
+
+/**
+ * The headline, revealed a word at a time.
+ *
+ * Split on words rather than characters: characters read as a typewriter
+ * gimmick, words read as a title card. Each word is `inline-block` so it can be
+ * transformed, with the whole line kept as one accessible string — a screen
+ * reader hears the sentence, not eleven fragments.
+ */
+function HeroTitle() {
+  const reduced = useReducedMotion();
+  const lead = 'Stop watching the show.'.split(' ');
+  const punch = 'Start playing it.'.split(' ');
+
+  if (reduced) {
+    return (
+      <h1 className="text-display-xl font-semibold">
+        Stop watching the show.
+        <br />
+        <span className="bg-gradient-to-r from-primary via-neon-purple to-accent bg-clip-text text-transparent">
+          Start playing it.
+        </span>
+      </h1>
+    );
+  }
+
+  return (
+    <h1 className="text-display-xl font-semibold">
+      <span className="sr-only">Stop watching the show. Start playing it.</span>
+
+      <motion.span aria-hidden variants={wordStagger} className="block">
+        {lead.map((word, index) => (
+          <motion.span key={`${word}-${index}`} variants={wordReveal} className="inline-block">
+            {word}
+            {index < lead.length - 1 && '\u00A0'}
+          </motion.span>
+        ))}
+        <br />
+
+        {/*
+          The gradient belongs to the *line*, not to each word. Painting it per
+          word restarts the ramp inside every word, so "Start playing it." came
+          out as three separate small rainbows instead of one sweep.
+
+          Which is why these words fade rather than rise: `bg-clip-text` clips
+          the parent's background to its descendants' glyphs, and a transformed
+          child is composited separately, taking its slice of the gradient with
+          it. Opacity leaves the layout — and so the gradient — exactly where it
+          was.
+        */}
+        <span className="bg-gradient-to-r from-primary via-neon-purple to-accent bg-clip-text text-transparent">
+          {punch.map((word, index) => (
+            <motion.span key={`${word}-${index}`} variants={wordFade} className="inline-block">
+              {word}
+              {index < punch.length - 1 && '\u00A0'}
+            </motion.span>
+          ))}
+        </span>
+      </motion.span>
+    </h1>
+  );
+}
+
+/**
+ * The light in the room the hero stands in.
+ *
+ * A spotlight from above, two slow rays crossing it, and a floor glow — the
+ * lighting rig of a broadcast set rather than a decorative gradient. All of it
+ * is `aria-hidden` and non-interactive, and none of it sits above the text.
+ */
+function HeroAtmosphere() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* The overhead spotlight. */}
+      <div className="absolute left-1/2 top-[-30%] h-[46rem] w-[70rem] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.18),transparent_62%)]" />
+
+      {/* Two rays, crossing on different periods so they never march in step. */}
+      <div className="absolute -left-1/4 top-0 h-full w-[60%] animate-ray-sweep bg-ray blur-2xl" />
+      <div
+        className="absolute -right-1/4 top-0 h-full w-[55%] animate-ray-sweep bg-ray blur-2xl"
+        style={{ animationDelay: '-9s', animationDuration: '24s' }}
+      />
+
+      {/* Floor bloom, so the section sits on something. */}
+      <div className="absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(to_top,hsl(var(--accent)/0.08),transparent)]" />
+    </div>
   );
 }
 
@@ -174,22 +283,11 @@ export function InteractiveFeatures() {
           copy="Every one of them is server-authoritative: your browser sends an intent, the server decides the result."
         />
 
-        <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {featurePillars.map((pillar) => (
-            <li key={pillar.title}>
-              <Card className="group h-full p-5 transition-colors hover:border-border-strong">
-                <span
-                  aria-hidden
-                  className={`block h-1 w-10 rounded-full ${
-                    pillar.accent === 'primary' ? 'bg-primary' : 'bg-accent'
-                  }`}
-                />
-                <h3 className="mt-4 font-semibold">{pillar.title}</h3>
-                <p className="mt-1.5 text-sm text-muted">{pillar.copy}</p>
-              </Card>
-            </li>
-          ))}
-        </ul>
+        <FeatureGrid />
+
+        <p className="text-center text-xs text-muted">
+          Figures shown are illustrative placeholders, not live counts.
+        </p>
       </div>
     </section>
   );

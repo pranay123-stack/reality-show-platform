@@ -58,6 +58,13 @@ const config: Config = {
           foreground: 'hsl(var(--danger-foreground) / <alpha-value>)',
         },
         live: 'hsl(var(--live) / <alpha-value>)',
+        /* Neon hues used only by the marketing feature cards' colour themes. */
+        neon: {
+          pink: 'hsl(var(--neon-pink) / <alpha-value>)',
+          cyan: 'hsl(var(--neon-cyan) / <alpha-value>)',
+          purple: 'hsl(var(--neon-purple) / <alpha-value>)',
+          gold: 'hsl(var(--neon-gold) / <alpha-value>)',
+        },
         heat: {
           1: 'hsl(var(--heat-1) / <alpha-value>)',
           2: 'hsl(var(--heat-2) / <alpha-value>)',
@@ -90,6 +97,10 @@ const config: Config = {
         'grid-fade':
           'radial-gradient(ellipse 80% 55% at 50% -10%, hsl(var(--primary) / 0.22), transparent 70%)',
         'stage': 'linear-gradient(140deg, hsl(var(--primary) / 0.18), hsl(var(--accent) / 0.12) 55%, transparent)',
+        /* The cinematic base: black, through deep purple, into midnight blue. */
+        'cinema':
+          'linear-gradient(175deg, hsl(258 40% 7%) 0%, hsl(266 45% 9%) 28%, hsl(240 50% 8%) 62%, hsl(232 45% 6%) 100%)',
+        'ray': 'linear-gradient(100deg, transparent 0%, hsl(var(--primary) / 0.13) 45%, hsl(var(--accent) / 0.10) 55%, transparent 100%)',
       },
       keyframes: {
         'pulse-live': {
@@ -103,11 +114,51 @@ const config: Config = {
         shimmer: {
           '100%': { transform: 'translateX(100%)' },
         },
+        /*
+          Ambient glow blobs. Deliberately long and asymmetric: three blobs on
+          the same period would visibly march in step, which reads as a loading
+          animation rather than atmosphere.
+        */
+        'drift-a': {
+          '0%, 100%': { transform: 'translate3d(0, 0, 0) scale(1)' },
+          '33%': { transform: 'translate3d(6%, -8%, 0) scale(1.12)' },
+          '66%': { transform: 'translate3d(-5%, 5%, 0) scale(0.94)' },
+        },
+        'drift-b': {
+          '0%, 100%': { transform: 'translate3d(0, 0, 0) scale(1.05)' },
+          '40%': { transform: 'translate3d(-8%, 6%, 0) scale(0.9)' },
+          '75%': { transform: 'translate3d(4%, 9%, 0) scale(1.15)' },
+        },
+        'drift-c': {
+          '0%, 100%': { transform: 'translate3d(0, 0, 0) scale(0.95)' },
+          '50%': { transform: 'translate3d(7%, 7%, 0) scale(1.2)' },
+        },
+        /* Star dust: one long vertical pass, so nothing ever snaps back. */
+        'dust': {
+          from: { transform: 'translate3d(0, 0, 0)' },
+          to: { transform: 'translate3d(0, -50%, 0)' },
+        },
+        /* A broadcast light sweeping across the stage. */
+        'ray-sweep': {
+          '0%, 100%': { transform: 'translateX(-15%) rotate(8deg)', opacity: '0.35' },
+          '50%': { transform: 'translateX(15%) rotate(12deg)', opacity: '0.7' },
+        },
+        /* Breathing glow for anything that is genuinely live. */
+        'aura': {
+          '0%, 100%': { opacity: '0.55' },
+          '50%': { opacity: '1' },
+        },
       },
       animation: {
         'pulse-live': 'pulse-live 1.6s ease-in-out infinite',
         'slide-up': 'slide-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both',
         shimmer: 'shimmer 1.6s infinite',
+        'drift-a': 'drift-a 22s ease-in-out infinite',
+        'drift-b': 'drift-b 26s ease-in-out infinite',
+        'drift-c': 'drift-c 19s ease-in-out infinite',
+        dust: 'dust 90s linear infinite',
+        'ray-sweep': 'ray-sweep 18s ease-in-out infinite',
+        aura: 'aura 3s ease-in-out infinite',
       },
     },
   },

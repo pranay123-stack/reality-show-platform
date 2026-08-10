@@ -47,6 +47,12 @@
   --heat-4: 22 92% 56%;
   --heat-5: 352 88% 58%;
 
+  /* Neon accents for the marketing surface's colour themes. */
+  --neon-pink: 330 90% 62%;
+  --neon-cyan: 187 92% 55%;
+  --neon-purple: 272 82% 66%;
+  --neon-gold: 42 96% 60%;
+
   --ring: 330 85% 58%;
   --radius: 0.875rem;
 

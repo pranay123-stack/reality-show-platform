@@ -42,7 +42,10 @@ export function DashboardCards({ cards }: { cards: OverviewCard[] }) {
         const highlight = card.value > 0 ? TONE_TEXT[tone] : '';
 
         const body = (
-          <Card className={cn('h-full space-y-1 p-4 transition-colors', TONE_ACCENT[tone])}>
+          <Card
+            interactive={Boolean(card.href)}
+            className={cn('h-full space-y-1 p-4', TONE_ACCENT[tone])}
+          >
             <p className="text-xs text-muted">{card.label}</p>
             <p className={cn('text-2xl font-semibold tabular-nums', highlight)}>
               {card.value.toLocaleString()}

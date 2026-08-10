@@ -1835,3 +1835,90 @@ that distinction turned out to be the whole story of this phase.
 
 `pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 733 passed ·
 `pnpm build` 4/4.
+
+---
+
+## Visual experience pass
+
+Not a numbered phase — a presentation-only pass over a platform that was
+functionally complete and visually flat. Nothing here touches business logic,
+an API, the schema, or authentication.
+
+### The room the product sits in
+
+The old background was one flat colour. It is now four layers, painted once in
+the root layout and never interacted with:
+
+1. a deep gradient — black, through deep purple, into midnight blue
+2. three ambient glow blobs on **deliberately unequal periods** (19s, 22s, 26s).
+   Equal periods make three blobs visibly march in step, which reads as a
+   loading animation rather than atmosphere
+3. star dust, drawn as `box-shadow` on a single 1×1 element rather than forty
+   positioned divs — one node and one paint instead of forty of each
+4. a broadcast bloom over the hero, and a vignette so the corners fall away
+
+The dust count is decided after mount and is lower on phones. That is not only
+a performance choice: a randomly-scattered field rendered on the server would
+not match the client's, which is a hydration error.
+
+### Glass, with contrast kept
+
+`Card` is now translucent with a blur behind it and a hairline border. The
+background is `bg-surface/65`, not the 5% white a glassmorphism tutorial would
+suggest — the glow blobs drift directly behind these cards, and contrast is
+what makes a dark interface readable over a moving backdrop. The blur is
+wrapped in `supports-[backdrop-filter]`, so a browser that cannot blur gets a
+solid surface rather than a window onto the scenery.
+
+Hover lift is opt-in via `interactive`. A card the reader cannot act on should
+not suggest that they can, and most cards here are read-only panels.
+
+### Eight features that show themselves
+
+The eight pillars were eight identical boxes with a coloured tick above the
+title. They describe genuinely different activities, and reading as one
+undifferentiated grid was the main thing making the page feel flat.
+
+`FeatureCard` now shares the shape and not the content: each card renders its
+own visual — a prediction split with a clock, a heat list with trend arrows, a
+two-sided opinion bar, a budget meter, a narrowing weekend funnel — and the
+colour theme decides only the light it casts. Meters grow from zero on scroll;
+numbers count up when they arrive.
+
+### Two things worth recording
+
+**The hero gradient had to move.** Revealing the headline word by word means
+transforming each word, and a transformed child of a `bg-clip-text` parent is
+composited separately — it takes its slice of the gradient with it. Painting
+the gradient per word instead produced three small rainbows where there should
+have been one sweep. The fix was to keep the gradient on the line and reveal
+those words with opacity alone, which leaves the layout, and so the gradient,
+where it was.
+
+**A latent hydration bug surfaced.** `Countdown` renders the remaining time on
+its first render, which is what stops a countdown flashing in a second late. On
+a statically prerendered page that text is produced at build time and again at
+hydration, and when those fall either side of a second boundary the strings
+differ by one — React error #418. It had been there since Phase 4 and only
+showed up now because the feature cards added two more countdowns to the same
+page, making the race roughly three times as likely to be caught. The numeric
+text now carries `suppressHydrationWarning`, which is the case that escape
+hatch exists for; everything structural is still checked.
+
+### Cost
+
+Framer Motion is imported only by the landing page. `/` is 54.1 kB / 237 kB
+first load; every application route is unchanged at 186–200 kB, and the shared
+chunk stays at 103 kB.
+
+### Verification
+
+`node apps/web/scripts/audit-ui.mjs` against a production build:
+
+| Check | Result |
+| --- | --- |
+| Page/viewport combinations | **96** (32 routes × 1440 / 834 / 390) |
+| Maximum horizontal overflow | **0 px** |
+| Pages not owning exactly one `h1` | **0** |
+| Interactive targets under 24 px | **0** |
+| Uncaught JavaScript errors | **0** |

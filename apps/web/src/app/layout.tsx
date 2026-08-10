@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 
+import { CinematicBackground } from '@/components/system/cinematic-background';
 import { Providers } from '@/providers';
 
 import '@reality/ui/styles.css';
@@ -32,6 +33,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#main" className="skip-link">
           Skip to content
         </a>
+        {/* Scenery, painted once behind everything. */}
+        <CinematicBackground />
         <Providers>{children}</Providers>
       </body>
     </html>

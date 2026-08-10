@@ -417,6 +417,7 @@ pnpm start                # production start (after build)
 | 18 | Security & abuse hardening | eleven findings fixed and re-tested; per-event WebSocket authorisation; URL scheme validation; socket and per-account rate limits; CSP; zero dependency advisories. See `SECURITY_AUDIT.md`. |
 | 19 | Analytics | raw log separated from pre-aggregated numbers so dashboards never scan events or transactional tables; client ingest limited to view events; opt-out stores nothing and erases history. |
 | 20 | UI/UX polish | One heading treatment across every screen; every page owns exactly one `h1`; 0 px overflow at 1440/834/390 measured against a **production** build; no interactive target under 24 px. |
+| — | Visual experience pass | Cinematic layered background, glass card system, Framer Motion hero and eight bespoke feature cards. No business logic, API, schema or auth touched. |
 | 21 | Full test pass | unit + integration + Playwright E2E, all listed scenarios. |
 | 22 | Performance pass | load scenarios + bottleneck report + optimisations. |
 | 23 | Production Docker deployment | `docker-compose.prod.yml` stack verified from clean state. |

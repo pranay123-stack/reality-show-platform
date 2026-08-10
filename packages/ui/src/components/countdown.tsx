@@ -21,6 +21,19 @@ export interface CountdownProps {
  * The clock is only a display: whether a poll or prediction is actually still
  * open is decided by the server when the vote arrives. A client whose system
  * clock is wrong sees the wrong number here, but cannot vote late because of it.
+ *
+ * ### On `suppressHydrationWarning`
+ *
+ * This renders the remaining time on the *first* render, which is what keeps a
+ * countdown from flashing in a second after the page settles. On a statically
+ * prerendered page that text is produced at build time and again at hydration,
+ * and if those two moments fall either side of a second boundary the strings
+ * differ by one — a real mismatch that React reports as error #418.
+ *
+ * The content is legitimately time-dependent, so this is the case the escape
+ * hatch exists for. React still renders the client's value; it just stops
+ * treating a clock that has moved as a bug. Only the numeric text carries it,
+ * so a genuine structural mismatch anywhere else is still reported.
  */
 export function Countdown({
   to,
@@ -73,8 +86,10 @@ export function Countdown({
         )}
       >
         <span className="sr-only">Time remaining: </span>
-        {days > 0 && `${days}d `}
-        {pad(hours)}:{pad(minutes)}:{pad(seconds)}
+        <span suppressHydrationWarning>
+          {days > 0 && `${days}d `}
+          {pad(hours)}:{pad(minutes)}:{pad(seconds)}
+        </span>
       </span>
     );
   }
@@ -88,7 +103,7 @@ export function Countdown({
 
   return (
     <div role="timer" aria-live="off" className={cn('flex items-center gap-2', className)}>
-      <span className="sr-only">
+      <span className="sr-only" suppressHydrationWarning>
         Time remaining: {days} days {hours} hours {minutes} minutes {seconds} seconds
       </span>
       {blocks.map((block) => (
@@ -100,7 +115,10 @@ export function Countdown({
             urgent ? 'border-danger/50 bg-danger/10' : 'border-border bg-surface-raised',
           )}
         >
-          <span className={cn('font-mono text-xl font-semibold tabular-nums', urgent && 'text-danger')}>
+          <span
+            suppressHydrationWarning
+            className={cn('font-mono text-xl font-semibold tabular-nums', urgent && 'text-danger')}
+          >
             {pad(block.value)}
           </span>
           <span className="text-[10px] uppercase tracking-widest text-muted">{block.label}</span>

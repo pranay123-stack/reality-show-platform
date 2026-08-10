@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { setMailer, type MailMessage } from '../../src/core/mailer.js';
 import { hashPassword } from '../../src/core/password.js';
 import { settleDomainEvents } from '../../src/core/domain-events.js';
+import { syncLeaderboards } from '../../src/modules/leaderboards/leaderboards.service.js';
 import { TestClient, VALID_PASSWORD, buildTestApp } from '../helpers/app.js';
 import { disconnectTestDatabase, resetAll, resetRedis, testPrisma as db } from '../helpers/db.js';
 
@@ -442,6 +443,10 @@ describe('journey: a new viewer', () => {
   });
 
   it('15. appears on the leaderboard, ranked on what was earned', async () => {
+    // The board is a derived view: an award nudges the projection rather than
+    // waiting for it, so a test drains it instead of racing it.
+    await syncLeaderboards();
+
     const response = await client.request({
       method: 'GET',
       url: `${LEADERBOARDS}?scope=SEASON&window=SEASON`,

@@ -43,11 +43,11 @@ async function claimSuiteLock(): Promise<void> {
     log: ['error'],
   });
 
-  const [{ locked }] = await lockClient.$queryRaw<
+  const rows = await lockClient.$queryRaw<
     { locked: boolean }[]
   >`SELECT pg_try_advisory_lock(${SUITE_LOCK_KEY}) AS locked`;
 
-  if (!locked) {
+  if (!rows[0]?.locked) {
     await lockClient.$disconnect();
     lockClient = null;
     throw new Error(

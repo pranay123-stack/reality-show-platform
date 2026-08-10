@@ -1,6 +1,6 @@
 # Build status
 
-**Last updated:** end of Phase 20.
+**Last updated:** after the visual experience pass (post-Phase 20).
 
 Everything below was executed and observed, not assumed. Per-phase detail is in
 [`PHASE_REPORTS.md`](PHASE_REPORTS.md); the design is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -13,13 +13,14 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | --- | --- | --- |
 | Typecheck | `pnpm typecheck` | 7/7 packages |
 | Lint | `pnpm lint` | 5/5 packages, 0 warnings |
-| Tests | `pnpm test` | **733 passed** (631 API across 30 files, 69 web, 26 ui, 7 shared) |
+| Tests | `pnpm test` | **812 passed** (710 API across 34 files, 69 web, 26 ui, 7 shared) |
 | Build | `pnpm build` | 4/4 (API bundle + Next production build) |
 | Migrations | `prisma migrate deploy` | 9 migrations, applied cleanly, no drift |
 | Seed | `pnpm db:seed` | idempotent, completes |
 | Dependencies | `pnpm audit` | **no known vulnerabilities** |
 | Runtime | API + web started, flows exercised via curl and headless Chromium | see below |
 | UI audit | `node apps/web/scripts/audit-ui.mjs` against a **production** build | 96 page/viewport combinations · **0 px** overflow · every page owns exactly one `h1` · no target under 24 px · 0 JS errors |
+| Test commands | `pnpm test:unit` (parallel, no database) · `pnpm test:integration` (serial, advisory-locked) · `pnpm test:e2e` (needs a running production stack) | separated so unit tests are not held to the integration suite's constraints |
 
 ---
 
@@ -109,6 +110,20 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 - **Do not run two test suites at once.** They truncate the same tables and destroy each other; a
   concurrent pair produced 63 phantom failures that a single clean run does not reproduce.
 - No 404 routes remain in the navigation.
+- **The cinematic background is scenery.** Four `fixed`, `pointer-events-none`, `aria-hidden`
+  layers in the root layout. It must never intercept a click, appear in the accessibility tree, or
+  widen the page — which is why it is `fixed`, not absolutely positioned in a scroll container.
+- **`Card` is glass and its background is deliberately still dark.** `bg-surface/65`, not the 5%
+  white a glassmorphism tutorial suggests: the glow blobs drift directly behind the cards and
+  contrast is what keeps a dark interface readable over a moving backdrop.
+- **A transformed child of a `bg-clip-text` parent takes its slice of the gradient with it.** The
+  hero headline reveals its gradient words with opacity alone for this reason.
+- **`Countdown` carries `suppressHydrationWarning` on its numeric text.** It renders the remaining
+  time on first render, so on a prerendered page the build-time and hydration-time strings can
+  differ by one second. Structural mismatches are still reported.
+- **Two integration tests must drain the leaderboard projection.** An award *nudges* it rather than
+  waiting for it, so a test that reads the board immediately races it — call `syncLeaderboards()`
+  first, as `journeys` and `data-integrity` do.
 - **`next dev` and `next build` do not serve the same document.** A CSP of
   `script-src 'self'` passes every check in development — dev keeps `'unsafe-inline'` for React
   Refresh — and produces a completely inert production build, because the App Router bootstraps
@@ -130,7 +145,7 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 
 | Phase | Scope | Notes for whoever picks this up |
 | --- | --- | --- |
-| 21 | Full test pass | Playwright is installed and Chromium is downloaded. `apps/web/scripts/verify-ui.mjs` (one screen, screenshots) and `apps/web/scripts/audit-ui.mjs` (every screen, measurements) are working harnesses; neither is wired into `pnpm test` yet, and `test:e2e` still points at no spec files. |
+| 21 | Full test pass | **Largely delivered ahead of schedule** — journeys, data integrity, database lifecycle and performance smoke suites exist, plus `e2e/` specs and a Playwright config for production-mode browser coverage. What remains: `QA_REPORT.md`, and deciding whether `test:e2e` should join CI. |
 | 22 | Performance | |
 | 23 | Production Docker | `docker-compose.prod.yml` and Dockerfiles not started. |
 | 24 | Final audit + `FINAL_RELEASE_REPORT.md` | |

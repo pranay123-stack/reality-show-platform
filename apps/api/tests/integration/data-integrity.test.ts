@@ -398,7 +398,9 @@ describe('the observers agree with what happened', () => {
     expect(await db.pointsLedger.count({ where: { userId: user.userId } })).toBe(1);
 
     const notifications = await db.notification.findMany({ where: { userId: user.userId } });
-    const keys = notifications.map((row) => `${row.type}:${row.entityId}`);
+    // The dedupe key is what the notification module guards on, so it is the
+    // thing that must be distinct.
+    const keys = notifications.map((row) => `${row.event}:${row.dedupeKey ?? row.id}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
 

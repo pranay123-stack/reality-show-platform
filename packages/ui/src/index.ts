@@ -11,6 +11,7 @@ export {
   CardFooter,
   CardHeader,
   CardTitle,
+  type CardProps,
   type CardTitleProps,
 } from './components/card';
 export { Alert, type AlertProps } from './components/alert';
