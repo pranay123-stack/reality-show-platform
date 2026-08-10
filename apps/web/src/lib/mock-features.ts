@@ -22,12 +22,14 @@ export const challengeDemo = {
   submissions: 12_450,
   top: 'Cooking without fire',
   votes: 3_180,
+  creator: 'NightOwl',
+  creatorRank: 1,
 };
 
 export const heatDemo = [
-  { name: 'Mira Sol', score: 82, trend: 'UP' as const },
-  { name: 'Aria Vale', score: 78, trend: 'UP' as const },
-  { name: 'Lena Frost', score: 59, trend: 'DOWN' as const },
+  { name: 'Mira Sol', score: 82, delta: 12, trend: 'UP' as const },
+  { name: 'Aria Vale', score: 78, delta: 5, trend: 'UP' as const },
+  { name: 'Lena Frost', score: 59, delta: -8, trend: 'DOWN' as const },
 ];
 
 export const perspectiveDemo = {

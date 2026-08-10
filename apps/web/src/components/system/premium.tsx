@@ -64,6 +64,55 @@ export function CountUp({
   );
 }
 
+/**
+ * A number that keeps climbing, the way a live tally does.
+ *
+ * Starts at `value` and only moves after mount, so the server-rendered text and
+ * the first client render are identical — a counter that started ticking during
+ * render would be a hydration mismatch on a prerendered page.
+ *
+ * The increments are deliberately uneven. A number rising by exactly seven
+ * every second reads as a broken animation; real tallies arrive in clumps.
+ */
+export function LiveTicker({
+  value,
+  perTick = 12,
+  intervalMs = 2200,
+  className,
+}: {
+  value: number;
+  /** Rough size of each jump. */
+  perTick?: number;
+  intervalMs?: number;
+  className?: string;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { amount: 0.4 });
+  const reduced = useReducedMotion();
+  const [current, setCurrent] = useState(value);
+  const step = useRef(0);
+
+  useEffect(() => {
+    // Off-screen or reduced motion: no timer at all, rather than a hidden one.
+    if (!inView || reduced) return;
+
+    const id = setInterval(() => {
+      step.current += 1;
+      // A fixed pattern rather than randomness, so nothing depends on Math.random.
+      const jitter = [0.4, 1, 0.7, 1.6, 0.9][step.current % 5]!;
+      setCurrent((previous) => previous + Math.round(perTick * jitter));
+    }, intervalMs);
+
+    return () => clearInterval(id);
+  }, [inView, reduced, perTick, intervalMs]);
+
+  return (
+    <span ref={ref} className={cn('tabular-nums', className)} suppressHydrationWarning>
+      {current.toLocaleString()}
+    </span>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Badges
 // ---------------------------------------------------------------------------

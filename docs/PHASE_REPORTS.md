@@ -1922,3 +1922,80 @@ chunk stays at 103 kB.
 | Pages not owning exactly one `h1` | **0** |
 | Interactive targets under 24 px | **0** |
 | Uncaught JavaScript errors | **0** |
+
+---
+
+## Live arena iteration
+
+A second presentation-only pass, turning the landing page from a marketing site
+into the arena the product actually is. Nothing here touches business logic, an
+API, the schema, or authentication.
+
+### The order is the argument
+
+The page used to explain itself for four sections before showing anything
+happening. It now opens with the answer to the question a visitor arrives with:
+
+1. **Hero** — what this is
+2. **Tonight's Arena** — what is open right now
+3. **House Trending Now** — who it is happening to
+4. **The eight features** — how to take part
+5. **Your Reality Profile** — what you accumulate
+6. How it works, rewards, leaderboard, sign-up
+
+Someone who bounces after two screens has still seen the product working.
+
+### Tonight's Arena
+
+Four things are open on a show night, and they are open in different senses: a
+poll closes in two minutes, a weekend question closes on Friday. The state —
+live, closing, open, soon — drives the badge, the accent and whether the clock
+reads as urgent, so the difference registers before anything is read. Each card
+carries a live participant count, a one-line standing, a countdown and a way in.
+
+### Feature cards became modules
+
+`FeatureCard` is now `InteractiveFeatureCard`, and the two new props are the
+substance of the change: `liveStatus` (what the feature is doing) is a separate
+axis from `theme` (what colour it casts), and `metric` gives every card one
+headline number. Beneath that each feature renders its own preview —
+contestant avatars against prediction shares, a heat list with today's movement,
+a creator and their rank on the top challenge, a budget meter, a narrowing
+weekend funnel.
+
+The live poll card carries the one number on the page that keeps moving while
+you read it.
+
+### Two things done deliberately
+
+**The profile widget is labelled an example.** The brief asked for a "Your
+Reality Profile" card showing a username, level, points, rank and streak. Every
+visitor reading a landing page is signed out, so presenting a sample as *their*
+level and *their* streak would be a lie told for engagement. The heading says
+whose profile it is, the card is marked "Example profile", and the call to
+action is to go and start one. The retention argument still lands — showing what
+a month of playing looks like is the reason to sign up — it just has to be true.
+
+**`LiveTicker` starts still.** A counter that begins climbing during render is a
+hydration mismatch on a prerendered page, which is exactly the bug the previous
+pass had to fix in `Countdown`. It renders its starting value on the server and
+on the first client render, and only begins moving in an effect — and only when
+it is on screen and motion is not reduced. Its increments follow a fixed uneven
+pattern rather than `Math.random`, because randomness would reintroduce the
+mismatch it was written to avoid.
+
+### Cost
+
+`/` is 57.7 kB / 241 kB first load, up 3.6 kB from the previous pass. Framer
+Motion is still imported only by the landing page; every application route is
+unchanged.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| Page/viewport combinations | **96** (32 routes × 1440 / 834 / 390) |
+| Maximum horizontal overflow | **0 px** |
+| Pages not owning exactly one `h1` | **0** |
+| Interactive targets under 24 px | **0** |
+| Uncaught JavaScript errors | **0** |

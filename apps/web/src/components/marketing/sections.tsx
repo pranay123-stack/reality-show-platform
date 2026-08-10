@@ -4,7 +4,6 @@ import {
   Badge,
   Button,
   Card,
-  ContestantCard,
   Countdown,
   LeaderboardRow,
   OptionResult,
@@ -22,7 +21,6 @@ import { fadeIn, fadeUp, stagger, wordFade, wordReveal, wordStagger } from '@/li
 import { env } from '@/lib/env';
 import {
   howItWorks,
-  landingContestants,
   landingLeaderboard,
   landingPoll,
   rewardTiers,
@@ -287,43 +285,6 @@ export function InteractiveFeatures() {
 
         <p className="text-center text-xs text-muted">
           Figures shown are illustrative placeholders, not live counts.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Contestant preview
-// ---------------------------------------------------------------------------
-
-export function ContestantPreview() {
-  return (
-    <section id="contestants" className="border-t border-border/60 py-20">
-      <div className="container space-y-10">
-        <SectionHeading
-          eyebrow="Contestant heat meter"
-          title="Momentum you can actually see"
-          copy="Heat measures contestants on the show — votes, reactions, engagement and trend — and it is recomputed on the server, never in your browser."
-        />
-
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {landingContestants.map((contestant, index) => (
-            <li key={contestant.id}>
-              <ContestantCard
-                name={contestant.name}
-                occupation={contestant.occupation}
-                tagline={contestant.tagline}
-                heatScore={contestant.heatScore}
-                heatTrend={contestant.heatTrend}
-                rank={index + 1}
-              />
-            </li>
-          ))}
-        </ul>
-
-        <p className="text-center text-xs text-muted">
-          Contestants shown are fictional placeholders created for development.
         </p>
       </div>
     </section>
