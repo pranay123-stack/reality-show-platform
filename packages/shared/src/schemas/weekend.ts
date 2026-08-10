@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { TEXT_LIMITS } from '../constants';
 import { WEEKEND_PARTICIPATION_TYPES, type WEEKEND_ROUND_STATUSES } from '../enums';
-import { idSchema } from './common';
+import { idSchema, safeUrlSchema } from './common';
 
 /**
  * Weekend Participation.
@@ -24,7 +24,7 @@ export const weekendSubmissionSchema = z.object({
   contestantId: idSchema.nullable().optional(),
   content: z.string().trim().min(10).max(TEXT_LIMITS.SUBMISSION_MAX),
   /** A link to media the user hosts themselves; nothing is uploaded here. */
-  mediaUrl: z.string().url().max(500).nullable().optional(),
+  mediaUrl: safeUrlSchema.nullable().optional(),
 });
 export type WeekendSubmissionInput = z.infer<typeof weekendSubmissionSchema>;
 

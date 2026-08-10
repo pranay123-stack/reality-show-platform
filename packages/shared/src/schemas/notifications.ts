@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { idSchema } from './common';
+import { idSchema, safeLinkSchema } from './common';
 
 /**
  * Notifications.
@@ -161,7 +161,9 @@ export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;
 export const announcementSchema = z.object({
   title: z.string().trim().min(3).max(120),
   body: z.string().trim().min(3).max(500),
-  link: z.string().trim().max(200).optional(),
+  // Rendered into an anchor, so the scheme is constrained: an announcement
+  // must not be able to ship a `javascript:` payload to every account.
+  link: safeLinkSchema.optional(),
 });
 
 export const retryDeliverySchema = z.object({

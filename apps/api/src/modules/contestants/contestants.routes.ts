@@ -1,4 +1,5 @@
 import {
+  CONTESTANT_STATUSES,
   HEAT_WINDOWS,
   createContestantSchema,
   idParamSchema,
@@ -27,7 +28,9 @@ import {
 import { inspectHeat, recomputeShowHeat } from './heat.service.js';
 
 const listQuerySchema = z.object({
-  status: z.string().optional(),
+  // Constrained to the enum: an arbitrary string reached Prisma as an enum
+  // filter and produced a 500 rather than a 400.
+  status: z.enum(CONTESTANT_STATUSES).optional(),
   sort: z.enum(['heat', 'name']).optional(),
 });
 

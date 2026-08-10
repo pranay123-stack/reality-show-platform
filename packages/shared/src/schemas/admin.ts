@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { CONTESTANT_STATUSES } from '../enums';
-import { idSchema } from './common';
+import { idSchema, safeUrlSchema } from './common';
 
 /**
  * The operator console.
@@ -26,7 +26,7 @@ export const createContestantSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'Use lower-case letters, numbers and hyphens'),
   tagline: z.string().trim().max(160).nullable().optional(),
   bio: z.string().trim().max(2000).nullable().optional(),
-  avatarUrl: z.string().trim().url().max(500).nullable().optional(),
+  avatarUrl: safeUrlSchema.nullable().optional(),
   age: z.number().int().min(16).max(120).nullable().optional(),
   occupation: z.string().trim().max(120).nullable().optional(),
   hometown: z.string().trim().max(120).nullable().optional(),

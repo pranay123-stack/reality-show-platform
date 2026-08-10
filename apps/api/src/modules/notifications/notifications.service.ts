@@ -36,6 +36,31 @@ import { defaultTemplateFor, render } from './templates.js';
  *    rather than merely guarded.
  */
 
+/**
+ * Keeps a rendered link navigable and harmless.
+ *
+ * Templates are editable data and their placeholders are filled from event
+ * payloads, so a link can be influenced by more than one party. Rather than
+ * trusting either, the rendered value is re-checked here: an in-app path or an
+ * http(s) URL survives, everything else — `javascript:`, `data:`,
+ * protocol-relative `//evil.example` — becomes no link at all.
+ */
+function safeNotificationLink(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith('//')) return null;
+  // eslint-disable-next-line no-control-regex -- matching control characters is the point
+  if (/[\u0000-\u001f\u007f]/.test(trimmed)) return null;
+  if (trimmed.startsWith('/')) return trimmed.slice(0, 500);
+
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? trimmed.slice(0, 500) : null;
+  } catch {
+    return null;
+  }
+}
+
 const MAX_ATTEMPTS = 5;
 /** Exponential, in seconds: ~1m, 5m, 25m, 2h. */
 const RETRY_BACKOFF_SECONDS = 60;
@@ -214,6 +239,12 @@ async function deliverTo(
 
   const dedupeKey = `${context.eventKey}:${recipient.userId}`;
 
+  // A template's link is rendered with values from the event payload, so the
+  // *rendered* result is what has to be safe, not the template. Anything that
+  // is not an in-app path or an http(s) URL is dropped rather than stored.
+  const renderedLink = context.template.link ? render(context.template.link, values) : null;
+  const link = safeNotificationLink(renderedLink);
+
   try {
     const notification = await prisma.notification.create({
       data: {
@@ -223,7 +254,7 @@ async function deliverTo(
         eventId: context.eventId,
         title: render(context.template.title, values),
         body: render(context.template.body, values),
-        link: context.template.link ? render(context.template.link, values) : null,
+        link,
         data: values as never,
         dedupeKey,
         deliveries: {

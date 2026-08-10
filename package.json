@@ -33,5 +33,12 @@
     "prettier": "3.4.2",
     "turbo": "2.10.9",
     "typescript": "5.9.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.23",
+      "esbuild": ">=0.28.1",
+      "sharp": ">=0.35.0"
+    }
   }
 }

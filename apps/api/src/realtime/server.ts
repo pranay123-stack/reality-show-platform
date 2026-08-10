@@ -11,6 +11,12 @@ import { createRedisClient } from '../core/redis.js';
 import { castVote, getPollForViewer } from '../modules/polls/polls.service.js';
 import { PollBroadcaster } from './broadcaster.js';
 import {
+  RATE_LIMITED_MESSAGE,
+  RATE_LIMITS,
+  currentPrincipal,
+  withinRateLimit,
+} from './guard.js';
+import {
   SOCKET_NAMESPACE,
   rooms,
   type ClientToServerEvents,
@@ -20,17 +26,33 @@ import {
 /**
  * Socket.IO server.
  *
- * Authentication happens once, in the handshake, and the resolved principal is
- * pinned to the socket. An unauthenticated socket is still allowed — spectating
- * a live poll needs no account — but it can only *read*: `poll:vote` requires a
- * verified, active user, checked against server state rather than anything the
- * client asserts.
+ * The handshake identifies the connection; it does not authorise anything that
+ * happens later. An unauthenticated socket is allowed — spectating a live poll
+ * needs no account — but every privileged event re-resolves the principal from
+ * server state, because a socket outlives the facts it was opened with. A
+ * moderator suspending an account mid-show must stop that account voting
+ * immediately, not whenever it next reconnects.
+ *
+ * Nothing the client asserts is trusted: not the user id, not the role, and not
+ * the size of what it sends.
  */
+
+/** Ids are cuids; anything longer is malformed and must not reach a query. */
+const MAX_ID_LENGTH = 64;
+
+function validId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_ID_LENGTH;
+}
 
 interface SocketData {
   userId: string | null;
   emailVerified: boolean;
   role: string | null;
+  /**
+   * Kept so every privileged event can re-resolve the principal. Without it the
+   * handshake's snapshot would be the only authorisation a socket ever gets.
+   */
+  sessionId: string | null;
 }
 
 export type LiveServer = Server<ClientToServerEvents, ServerToClientEvents, never, SocketData>;
@@ -102,6 +124,7 @@ export async function attachRealtime(app: FastifyInstance): Promise<LiveServer> 
       socket.data.userId = null;
       socket.data.emailVerified = false;
       socket.data.role = null;
+      socket.data.sessionId = null;
 
       if (token) {
         const claims = await verifyAccessToken(token);
@@ -113,6 +136,7 @@ export async function attachRealtime(app: FastifyInstance): Promise<LiveServer> 
             socket.data.userId = context.userId;
             socket.data.emailVerified = context.emailVerified;
             socket.data.role = context.role;
+            socket.data.sessionId = claims.sid;
           }
         }
       }
@@ -141,8 +165,15 @@ export async function attachRealtime(app: FastifyInstance): Promise<LiveServer> 
     socket.on('poll:join', async (payload, ack) => {
       const respond = typeof ack === 'function' ? ack : () => undefined;
       try {
-        if (!payload?.pollId) {
+        // Bounded before anything else: an unbounded id would otherwise reach
+        // the database as a query parameter, and joining costs a read.
+        if (!validId(payload?.pollId)) {
           respond({ ok: false, code: ERROR_CODES.BAD_REQUEST, message: 'pollId is required' });
+          return;
+        }
+
+        if (!(await withinRateLimit(socket, RATE_LIMITS.join))) {
+          respond({ ok: false, code: ERROR_CODES.RATE_LIMITED, message: RATE_LIMITED_MESSAGE });
           return;
         }
 
@@ -169,31 +200,33 @@ export async function attachRealtime(app: FastifyInstance): Promise<LiveServer> 
     });
 
     socket.on('poll:leave', (payload) => {
-      if (payload?.pollId) void socket.leave(rooms.poll(payload.pollId));
+      if (validId(payload?.pollId)) void socket.leave(rooms.poll(payload.pollId));
     });
 
     socket.on('poll:vote', async (payload, ack) => {
       const respond = typeof ack === 'function' ? ack : () => undefined;
 
-      if (!socket.data.userId) {
-        respond({ ok: false, code: ERROR_CODES.UNAUTHENTICATED, message: 'Sign in to vote' });
-        return;
-      }
-      if (!socket.data.emailVerified) {
-        respond({
-          ok: false,
-          code: ERROR_CODES.EMAIL_NOT_VERIFIED,
-          message: 'Confirm your email address before voting',
-        });
-        return;
-      }
-      if (!payload?.pollId || !payload?.optionId) {
+      if (!validId(payload?.pollId) || !validId(payload?.optionId)) {
         respond({ ok: false, code: ERROR_CODES.BAD_REQUEST, message: 'pollId and optionId are required' });
         return;
       }
 
+      if (!(await withinRateLimit(socket, RATE_LIMITS.vote))) {
+        respond({ ok: false, code: ERROR_CODES.RATE_LIMITED, message: RATE_LIMITED_MESSAGE });
+        return;
+      }
+
+      // Re-resolved on every vote, not read from the handshake. This is what
+      // makes a suspension, a ban, a revoked session or a role change take
+      // effect on an open socket.
+      const principal = await currentPrincipal(socket);
+      if (!principal.ok) {
+        respond({ ok: false, code: principal.code, message: principal.message });
+        return;
+      }
+
       try {
-        const result = await castVote(payload.pollId, socket.data.userId, payload.optionId);
+        const result = await castVote(payload.pollId, principal.principal.userId, payload.optionId);
 
         // Having voted, this socket may now see the breakdown.
         await socket.join(rooms.pollVoters(payload.pollId));
@@ -215,7 +248,7 @@ export async function attachRealtime(app: FastifyInstance): Promise<LiveServer> 
         });
 
         if (result.pointsAwarded > 0) {
-          namespace.to(rooms.user(socket.data.userId)).emit('points:awarded', {
+          namespace.to(rooms.user(principal.principal.userId)).emit('points:awarded', {
             delta: result.pointsAwarded,
             balance: result.balance,
             reason: 'poll',

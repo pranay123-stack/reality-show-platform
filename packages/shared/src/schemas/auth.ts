@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { safeUrlSchema } from './common';
+
 import { TEXT_LIMITS } from '../constants';
 import { ROLES, USER_STATUSES } from '../enums';
 
@@ -116,7 +118,7 @@ export const updateProfileSchema = z.object({
   bio: z.string().trim().max(TEXT_LIMITS.BIO_MAX).nullable().optional(),
   country: z.string().trim().max(64).nullable().optional(),
   timezone: z.string().trim().max(64).optional(),
-  avatarUrl: z.string().url().max(500).nullable().optional(),
+  avatarUrl: safeUrlSchema.nullable().optional(),
 });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 

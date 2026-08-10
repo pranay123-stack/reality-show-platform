@@ -1038,11 +1038,27 @@ export async function exportLeaderboard(
   };
 }
 
+/**
+ * Characters that make a spreadsheet treat a cell as a formula.
+ *
+ * A display name of `=cmd|'/c calc'!A0` is inert everywhere on the platform and
+ * executes the moment an operator opens the export in Excel. Quoting does not
+ * help — the formula is evaluated after the CSV is parsed — so the value is
+ * prefixed with an apostrophe, which spreadsheets read as "this is text".
+ */
+const FORMULA_PREFIXES = ['=', '+', '-', '@', '\t', '\r'];
+
+function csvCell(value: string): string {
+  const neutralised = FORMULA_PREFIXES.some((prefix) => value.startsWith(prefix))
+    ? `'${value}`
+    : value;
+  return `"${neutralised.replace(/"/g, '""')}"`;
+}
+
 export function toCsv(payload: Awaited<ReturnType<typeof exportLeaderboard>>): string {
   const header = 'rank,userId,displayName,points';
-  const escape = (value: string) => `"${value.replace(/"/g, '""')}"`;
   const lines = payload.rows.map(
-    (row) => `${row.rank},${escape(row.userId)},${escape(row.displayName)},${row.points}`,
+    (row) => `${row.rank},${csvCell(row.userId)},${csvCell(row.displayName)},${row.points}`,
   );
   return [header, ...lines].join('\n');
 }

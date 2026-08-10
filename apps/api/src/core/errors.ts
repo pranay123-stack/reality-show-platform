@@ -120,7 +120,9 @@ function toErrorBody(
           error: {
             code: ERROR_CODES.CONFLICT,
             message: 'That record already exists',
-            details: { fields: error.meta?.target ?? [] },
+            // The offending columns are deliberately not returned: they are
+            // schema internals, and a caller who needs to know which field
+            // clashed should be told by the service in its own words.
             requestId,
           },
         },

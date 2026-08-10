@@ -1,6 +1,6 @@
 # Build status
 
-**Last updated:** end of Phase 17.
+**Last updated:** end of Phase 18.
 
 Everything below was executed and observed, not assumed. Per-phase detail is in
 [`PHASE_REPORTS.md`](PHASE_REPORTS.md); the design is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -13,15 +13,16 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | --- | --- | --- |
 | Typecheck | `pnpm typecheck` | 7/7 packages |
 | Lint | `pnpm lint` | 5/5 packages, 0 warnings |
-| Tests | `pnpm test` | **561 passed** (554 API across 28 files, 7 shared) |
+| Tests | `pnpm test` | **601 passed** (594 API across 29 files, 7 shared) |
 | Build | `pnpm build` | 4/4 (API bundle + Next production build) |
 | Migrations | `prisma migrate deploy` | 8 migrations, applied cleanly, no drift |
 | Seed | `pnpm db:seed` | idempotent, completes |
+| Dependencies | `pnpm audit` | **no known vulnerabilities** |
 | Runtime | API + web started, flows exercised via curl and headless Chromium | see below |
 
 ---
 
-## Phases complete: 0 – 17
+## Phases complete: 0 – 18
 
 | Phase | Delivered |
 | --- | --- |
@@ -43,6 +44,7 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | **15** | Leaderboard System: `PointsLedger` → idempotent projector → Redis sorted sets, never an aggregate query at request time. Daily / weekly / season windows on a configurable board timezone, plus friends and community boards. Competition ranking with tie handling, rank movement from snapshots, privacy controls, and admin rebuild / snapshot / freeze / export / inspect. 1000 simultaneous events lose no updates |
 | **16** | Notification System: features emit domain events to a durable outbox; the notification module subscribes. No feature imports it. Deduplicated per (event, entity, user), preference-respecting, template-driven, with IN_APP delivering and EMAIL/PUSH declared as real providers that report themselves unconfigured. Admin health, failure inspection and retry. 1000 identical events yield one notification per user |
 | **17** | Producer/Admin console at `/admin`: eleven sections over the endpoints that already existed, plus the three genuine gaps (contestant management, operator lists for predictions and polls, an audit reader). Sections resolve server-side from the caller's permissions — moderator 5, producer 10, admin 11, viewer refused. Audit trail filterable by module, action, actor, target and date, and provably read-only |
+| **18** | Security audit and hardening: eleven findings, each reproduced against a running stack and re-tested after the fix. Two high — a WebSocket that authorised once at handshake so a suspended account kept voting, and `z.string().url()` accepting `javascript:`. Plus socket rate limits, CSV formula injection, a rate limiter answering 500 instead of 429, per-account limit keys, a CSP, and dependencies to zero advisories. 40 security regression tests and [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) |
 
 ### Things worth knowing
 
@@ -83,15 +85,25 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 - **The kitchen concurrency tests are load-sensitive.** A full run alongside the dev servers once
   failed 24 of them; the same run with the servers stopped is green. Worth knowing before treating
   it as a regression.
+- **A WebSocket authorises per event, not per handshake.** A socket outlives the facts it was
+  opened with; suspending an account used to leave its socket voting until the attacker chose to
+  reconnect. `realtime/guard.ts` re-resolves the principal on every privileged event.
+- **`z.string().url()` is not a safety check.** It accepts `javascript:` and `data:`. Use
+  `safeUrlSchema` or `safeLinkSchema` from `@reality/shared` for anything that reaches an `href`
+  or a `src`.
+- **`@fastify/rate-limit` throws whatever `errorResponseBuilder` returns**, so it must return an
+  `AppError`. Returning a bare envelope produced a 500 and no `RATE_LIMITED` code ever reached a
+  client — for seventeen phases, because the path had no test.
+- Findings, fixes, defences that held and remaining risks are in
+  [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md).
 - No 404 routes remain in the navigation.
 
 ---
 
-## Remaining: Phases 18 – 24
+## Remaining: Phases 19 – 24
 
 | Phase | Scope | Notes for whoever picks this up |
 | --- | --- | --- |
-| 18 | Security hardening | Idempotency-key table exists but is not yet wired into vote endpoints. |
 | 19 | Analytics | `AnalyticsEvent` + rollup models exist; taxonomy is in `ANALYTICS_EVENT_NAMES`. |
 | 20 | UI/UX polish | Loading/empty/error states already exist as components. |
 | 21 | Full test pass | Playwright is installed and Chromium is downloaded; `apps/web/scripts/verify-ui.mjs` is a working harness to build on. |

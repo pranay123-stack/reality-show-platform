@@ -1569,3 +1569,59 @@ codebase, and they are sensitive to Postgres contention. Re-running with the dev
 servers stopped was green, as was the API suite on its own (39/39 kitchen). The
 tests are load-sensitive rather than broken, which is worth knowing before
 someone runs them on a busy machine and goes looking for a bug that is not there.
+
+---
+
+## Phase 18 — Security Audit and Hardening
+
+Eleven findings, every one reproduced against a running stack before it was fixed and re-tested
+afterwards. The full write-up — findings, fixes, defences that held, attack scenarios and remaining
+risks — is [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md). What follows is what the audit *taught*.
+
+### The two that mattered
+
+**A socket authorised once and never again.** The Socket.IO handshake resolved the principal and
+pinned it. Nothing re-checked. Connecting as an active user, suspending the account, and then voting
+produced `ok=true, points=3` — a banned account could keep earning indefinitely, and the only thing
+that would stop it was choosing to reconnect. HTTP re-resolves on every request; the socket never
+did. Fixed by re-resolving the principal per privileged event, which the 30-second session cache
+makes nearly free.
+
+**`z.string().url()` is not a safety check.** It delegates to the `URL` constructor, which accepts
+`javascript:alert(1)` and `data:text/html,…`. Four fields took URLs this way, and the notification
+link — rendered into an anchor — had no validation at all. An administrator could have shipped a
+`javascript:` payload to every account, which is an escalation an administrator should not have.
+
+### The one that had survived seventeen phases
+
+Rate limiting returned **500, not 429**. `@fastify/rate-limit` throws whatever `errorResponseBuilder`
+returns; ours returned a plain envelope with no `statusCode`, so it fell through to the internal-error
+branch. The limit was enforced the whole time — but every throttled client was told the server had
+broken rather than that it should slow down, and no `RATE_LIMITED` code ever reached the web app.
+A client that believes it hit a server fault retries harder.
+
+It survived because the path had no test. Writing one found it in a minute.
+
+### What held
+
+Worth recording, because a review that only lists failures gives no sense of what is load-bearing.
+Mass assignment, SQL injection, brute force, refresh-token replay, CSRF, duplicate voting under
+concurrency, reward replay, refund farming, concurrent overdraw, anonymous socket votes, error
+leakage, password-reset enumeration and secret exposure were all attempted and all held. Several of
+those defences exist because earlier phases put them there deliberately — the unique indexes, the
+reuse detection, the ledger's idempotency tuple — and this audit is where that investment paid.
+
+### Tests
+
+40 security regression tests, grouped by the ten scenarios the brief specified. They assert on
+outcomes — what reached the database, what the attacker got back — rather than on the presence of a
+guard, because a guard that is present but bypassed still passes an inspection.
+
+### Dependencies
+
+`pnpm audit` reported 10 vulnerabilities (5 high), all transitive and build-time: `postcss`,
+`sharp` and `esbuild`. Pinned through `pnpm.overrides` so a fresh install cannot reintroduce them.
+**`pnpm audit` now reports no known vulnerabilities.**
+
+`pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 601 passed · `pnpm build` 4/4 ·
+`pnpm audit` clean.
