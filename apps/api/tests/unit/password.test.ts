@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { hashPassword, needsRehash, verifyPassword } from '../src/core/password.js';
+import { hashPassword, needsRehash, verifyPassword } from '../../src/core/password.js';
 
 describe('password hashing', () => {
   it('produces a versioned, parameterised encoding', async () => {

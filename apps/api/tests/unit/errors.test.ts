@@ -2,8 +2,8 @@ import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { AppError, forbidden, notFound, registerErrorHandler } from '../src/core/errors.js';
-import { parseBody } from '../src/core/validation.js';
+import { AppError, forbidden, notFound, registerErrorHandler } from '../../src/core/errors.js';
+import { parseBody } from '../../src/core/validation.js';
 
 async function appThatThrows(thrown: unknown) {
   const app = Fastify({ logger: false });

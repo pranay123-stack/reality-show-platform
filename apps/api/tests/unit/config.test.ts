@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { getConfig, resetConfigCache } from '../src/core/config.js';
+import { getConfig, resetConfigCache } from '../../src/core/config.js';
 
 const snapshot = { ...process.env };
 
