@@ -413,7 +413,7 @@ pnpm start                # production start (after build)
 | 14 | Points & Rewards engine | concurrency test proves no duplicate credit; reversal supported. |
 | 15 | Leaderboards | Redis-backed projection of `PointsLedger`; no aggregate query per request; tie handling, timezone boundaries and 1000-event concurrency all tested. |
 | 16 | Notifications | event-driven via a durable outbox; no feature imports the notification module; deduplicated per (event, entity, user); preference-respecting; IN_APP live with EMAIL/PUSH declared. |
-| 17 | Admin/producer dashboard | every domain operable; audit logs on sensitive actions. |
+| 17 | Admin/producer dashboard | every domain operable from `/admin`, driving the existing endpoints rather than duplicating them; sections resolved server-side per role; audit trail readable and filterable, and provably append-only. |
 | 18 | Security & abuse hardening | rate limits, idempotency, headers, CORS, WS auth, dependency audit. |
 | 19 | Analytics | event taxonomy + admin visualisations, minimal PII. |
 | 20 | UI/UX polish | loading/empty/error states, a11y, keyboard nav, contrast. |

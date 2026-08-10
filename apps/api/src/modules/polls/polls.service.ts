@@ -87,6 +87,41 @@ export async function getPollForViewer(pollId: string, userId: string | null) {
   };
 }
 
+/**
+ * The operator list.
+ *
+ * Includes drafts, which every audience-facing scope deliberately excludes — a
+ * producer has to see the poll they just created in order to start it. Without
+ * this a draft was reachable only by the id returned at creation time, which is
+ * not an interface.
+ */
+export async function listPollsForAdmin(userId: string | null) {
+  const showId = await getCurrentShowId();
+
+  const polls = await prisma.livePoll.findMany({
+    where: { showId },
+    include: POLL_INCLUDE,
+    orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+    take: 50,
+  });
+
+  const myVotes = userId
+    ? await prisma.pollVote.findMany({
+        where: { userId, pollId: { in: polls.map((poll) => poll.id) } },
+        select: { pollId: true, optionId: true },
+      })
+    : [];
+  const voteByPoll = new Map(myVotes.map((vote) => [vote.pollId, vote.optionId]));
+
+  return polls.map((poll) => ({
+    // Counts are always revealed here. Hiding them from the audience stops
+    // people following the crowd; hiding them from the producer running the
+    // poll would serve nobody.
+    ...toSnapshot(poll, true),
+    myOptionId: voteByPoll.get(poll.id) ?? null,
+  }));
+}
+
 export async function listPolls(userId: string | null, scope: 'active' | 'past' | 'all' = 'active') {
   const showId = await getCurrentShowId();
   const now = new Date();

@@ -25,12 +25,25 @@ import {
   createPrediction,
   getPrediction,
   listPredictions,
+  listPredictionsForAdmin,
   resolvePrediction,
   submitPrediction,
   updatePrediction,
 } from './predictions.service.js';
 
 export async function predictionRoutes(app: FastifyInstance): Promise<void> {
+  /**
+   * Operator list. Registered before `/:id` so `/admin` is never read as an id.
+   *
+   * Carries the per-option distribution the public list withholds — see
+   * `listPredictionsForAdmin` for why that is safe here and not there.
+   */
+  app.get(
+    '/admin/list',
+    { preHandler: [authenticate, requirePermission(PERMISSIONS.PREDICTION_CREATE)] },
+    async () => ({ data: await listPredictionsForAdmin() }),
+  );
+
   /** Browsing is open; the payload just omits "your entry" for anonymous callers. */
   app.get('/', { preHandler: [optionalAuthenticate] }, async (request) => {
     const query = parseQuery(request, listPredictionsQuerySchema);

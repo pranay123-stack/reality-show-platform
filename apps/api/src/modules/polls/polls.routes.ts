@@ -22,6 +22,7 @@ import {
   createPoll,
   getPollForViewer,
   listPolls,
+  listPollsForAdmin,
   pausePoll,
   publishPollResult,
   toSnapshot,
@@ -50,6 +51,19 @@ const votePollSchema = z.object({ optionId: z.string().min(1) });
 const listQuerySchema = z.object({ scope: z.enum(['active', 'past', 'all']).default('active') });
 
 export async function pollRoutes(app: FastifyInstance): Promise<void> {
+  /**
+   * Operator list, including drafts. Registered before `/:id` so `/admin` is
+   * never read as a poll id.
+   */
+  app.get(
+    '/admin/list',
+    { preHandler: [authenticate, requirePermission(PERMISSIONS.POLL_CREATE)] },
+    async (request) => {
+      const auth = requireAuth(request);
+      return { data: await listPollsForAdmin(auth.userId) };
+    },
+  );
+
   app.get('/', { preHandler: [optionalAuthenticate] }, async (request) => {
     const { scope } = parseQuery(request, listQuerySchema);
     return { data: await listPolls(request.auth?.userId ?? null, scope) };

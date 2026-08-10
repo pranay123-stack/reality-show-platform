@@ -375,6 +375,43 @@ export async function activatePrediction(predictionId: string) {
   return opened;
 }
 
+/**
+ * The operator list.
+ *
+ * Identical data to the public list with one deliberate difference: the
+ * per-option distribution is visible before resolution. Hiding it from the
+ * audience stops people following the crowd; hiding it from the producer
+ * running the show would serve nobody, and an operator seeing it leaks nothing
+ * because this endpoint is permission-gated.
+ */
+export async function listPredictionsForAdmin(): Promise<PredictionView[]> {
+  const showId = await getCurrentShowId();
+
+  const predictions = await prisma.prediction.findMany({
+    where: { showId },
+    include: { options: { include: { contestant: true } }, result: true },
+    orderBy: [{ status: 'asc' }, { closesAt: 'desc' }],
+    take: 100,
+  });
+
+  return predictions.map((prediction) => {
+    const view = toView(prediction, null);
+    return {
+      ...view,
+      options: prediction.options
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((option) => ({
+          id: option.id,
+          label: option.label,
+          contestantId: option.contestantId,
+          contestantName: option.contestant?.displayName ?? null,
+          sortOrder: option.sortOrder,
+          entryCount: option.entryCount,
+        })),
+    };
+  });
+}
+
 export async function closePrediction(predictionId: string) {
   const prediction = await prisma.prediction.findUniqueOrThrow({ where: { id: predictionId } });
   assertTransition(prediction.status, 'CLOSED');

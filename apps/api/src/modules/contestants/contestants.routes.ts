@@ -1,16 +1,28 @@
-import { HEAT_WINDOWS, idParamSchema, type HeatWindow } from '@reality/shared';
+import {
+  HEAT_WINDOWS,
+  createContestantSchema,
+  idParamSchema,
+  setContestantStatusSchema,
+  updateContestantSchema,
+  type HeatWindow,
+} from '@reality/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { authenticate, requirePermission } from '../../core/auth/guards.js';
 import { PERMISSIONS } from '../../core/permissions.js';
-import { parseParams, parseQuery } from '../../core/validation.js';
+import { parseBody, parseParams, parseQuery } from '../../core/validation.js';
+import { writeAudit } from '../audit/audit.service.js';
 import { getCurrentShowId } from '../show/show.service.js';
 import {
+  createContestant,
   getContestant,
   getHeatHistory,
   listContestants,
+  listContestantsForAdmin,
   recordProfileView,
+  setContestantStatus,
+  updateContestant,
 } from './contestants.service.js';
 import { inspectHeat, recomputeShowHeat } from './heat.service.js';
 
@@ -24,6 +36,53 @@ const historyQuerySchema = z.object({
 });
 
 export async function contestantRoutes(app: FastifyInstance): Promise<void> {
+  // --- operator management -------------------------------------------------
+  //
+  // Registered before `/:id` so `/admin` is never read as a contestant slug.
+
+  app.get(
+    '/admin/list',
+    { preHandler: [authenticate, requirePermission(PERMISSIONS.CONTESTANT_MANAGE)] },
+    async () => ({ data: await listContestantsForAdmin() }),
+  );
+
+  app.post(
+    '/admin',
+    { preHandler: [authenticate, requirePermission(PERMISSIONS.CONTESTANT_MANAGE)] },
+    async (request, reply) => {
+      const input = parseBody(request, createContestantSchema);
+      const contestant = await createContestant(input);
+      await writeAudit(request, 'contestant.create', 'Contestant', contestant.id, { after: input });
+      return reply.status(201).send({ data: contestant });
+    },
+  );
+
+  app.patch(
+    '/admin/:id',
+    { preHandler: [authenticate, requirePermission(PERMISSIONS.CONTESTANT_MANAGE)] },
+    async (request) => {
+      const { id } = parseParams(request, idParamSchema);
+      const input = parseBody(request, updateContestantSchema);
+      const contestant = await updateContestant(id, input);
+      await writeAudit(request, 'contestant.update', 'Contestant', id, { after: input });
+      return { data: contestant };
+    },
+  );
+
+  app.post(
+    '/admin/:id/status',
+    { preHandler: [authenticate, requirePermission(PERMISSIONS.CONTESTANT_MANAGE)] },
+    async (request) => {
+      const { id } = parseParams(request, idParamSchema);
+      const { status, reason } = parseBody(request, setContestantStatusSchema);
+      const contestant = await setContestantStatus(id, status);
+      await writeAudit(request, `contestant.status.${status.toLowerCase()}`, 'Contestant', id, {
+        after: { status, reason: reason ?? null },
+      });
+      return { data: contestant };
+    },
+  );
+
   /** Public list, ordered by heat. */
   app.get('/', async (request) => {
     const query = parseQuery(request, listQuerySchema);

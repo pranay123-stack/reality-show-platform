@@ -1474,3 +1474,98 @@ fan-out in half.
 
 `pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 531 passed ·
 `pnpm build` 4/4.
+
+---
+
+## Phase 17 — Producer / Admin Dashboard
+
+A console for operators, built almost entirely out of endpoints that already
+existed.
+
+### What was *not* built
+
+The brief's own instruction — "reuse existing services, do not duplicate
+business logic" — turned out to be most of the design. Auditing the operator
+surface first found 47 admin endpoints already shipped across ten modules:
+challenge moderation, poll and prediction lifecycles, kitchen, weekend, rewards,
+leaderboards and notifications. The console drives those. Closing a poll from the
+dashboard is `POST /polls/admin/:id/close` — the same call, the same permission
+check, the same audit row. There is no admin-only duplicate of any feature.
+
+Three genuine gaps existed, and only those were added:
+
+1. **Contestant management** had no service at all — the module was read-only.
+2. **An operator list for predictions and polls.** Both public lists withhold
+   things by design: predictions hide the per-option split until resolution so
+   nobody follows the crowd, and the poll list excludes drafts. A producer needs
+   both. Rather than weakening either audience rule, each module gained a
+   permission-gated `admin/list` that reveals them to operators only.
+3. **An audit reader.** `writeAudit` had been recording since Phase 3 with
+   nothing to read it back.
+
+Plus one small aggregation endpoint for the overview.
+
+### The poll-draft bug
+
+`listPolls` excluded `DRAFT` for every scope. A producer could create a poll and
+then never see it again — the id was returned once at creation and that was the
+only way to reach it. Every integration test passed, because they held the id in
+a variable. It took clicking "New poll" and then looking for it to notice.
+
+### Permissions
+
+The console is gated at MODERATOR, and each section resolves from the caller's
+permissions **server-side** — `GET /admin/sections` returns what they may open,
+and the sidebar renders from that. That is not the security boundary; every
+endpoint still checks independently, and the tests prove a moderator calling a
+producer route directly gets a 403. It exists so the navigation never shows a
+door that will not open.
+
+The resulting split: a moderator sees 5 sections, a producer 10, an admin 11.
+A viewer gets a plain refusal rather than an empty console.
+
+### Audit
+
+Filterable by module, action, actor, target type and date range. The module is
+derived from the action prefix (`poll.close` → `poll`) rather than stored, so a
+newly audited action appears in the filter without registration, and the filter
+values are read from the data — the dropdown cannot offer an action nobody ever
+performed.
+
+The viewer is read-only and visibly so: there is no edit control anywhere on the
+screen, and a test asserts that `PATCH`, `PUT` and `DELETE` on an audit row are
+all 404. An operator who could amend the record of their own actions would make
+the record worthless.
+
+### Tests
+
+30 integration tests covering all ten required scenarios, including: a viewer
+denied everywhere, a moderator's narrow console, full prediction and poll
+lifecycles driven as a producer, reward permissions split three ways, the
+challenge moderation workflow, and a sweep proving eight operator verbs are all
+refused for an ordinary user with nothing created and *nothing audited* — a
+refused action is not an action.
+
+### Live verification
+
+| Check | Result |
+| --- | --- |
+| All 11 sections at 1440 / 834 / 390 | **0 px** horizontal overflow everywhere |
+| Sidebar by role | admin 11 sections, producer 10, moderator 5, viewer refused |
+| Create a contestant through the dialog | list went 10 → 11, `contestant.create` audited to PRODUCER |
+| Duplicate slug | refused with *"That slug is already taken on this show"* |
+| Create and start a poll through the console | `poll.create` + `poll.activate` audited, status DRAFT → ACTIVE |
+| Audit filtering | `module=poll` returned 9 rows, every one a `poll.*` action |
+| Producer on `/admin/audit` | refused — *"visible to administrators only"* |
+
+`pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 561 passed ·
+`pnpm build` 4/4.
+
+### A note on a flaky run
+
+One full-suite run failed 24 kitchen tests while the dev API and web servers were
+still running alongside it. Kitchen has the heaviest concurrency tests in the
+codebase, and they are sensitive to Postgres contention. Re-running with the dev
+servers stopped was green, as was the API suite on its own (39/39 kitchen). The
+tests are load-sensitive rather than broken, which is worth knowing before
+someone runs them on a busy machine and goes looking for a bug that is not there.

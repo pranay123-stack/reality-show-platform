@@ -1,6 +1,11 @@
-import type { HeatWindow } from '@reality/shared';
+import type {
+  ContestantStatus,
+  CreateContestantInput,
+  HeatWindow,
+} from '@reality/shared';
+import { ERROR_CODES } from '@reality/shared';
 
-import { notFound } from '../../core/errors.js';
+import { AppError, conflict, notFound } from '../../core/errors.js';
 import { prisma } from '../../core/prisma.js';
 import { getCurrentShowId } from '../show/show.service.js';
 
@@ -234,4 +239,148 @@ export async function recordProfileView(contestantId: string): Promise<void> {
     update: { value: { increment: 1 } },
     create: { contestantId, metricKey: 'profileViews', value: 1 },
   });
+}
+
+
+// ---------------------------------------------------------------------------
+// Operator management
+// ---------------------------------------------------------------------------
+
+/**
+ * Creating a contestant.
+ *
+ * `heatScore` is deliberately not settable. Heat is computed from real audience
+ * signals by `ContestantHeatService`; letting an operator type a number in
+ * would make the meter an opinion rather than a measurement.
+ */
+export async function createContestant(input: CreateContestantInput) {
+  const showId = await getCurrentShowId();
+
+  const existing = await prisma.contestant.findFirst({
+    where: { showId, slug: input.slug },
+    select: { id: true },
+  });
+  if (existing) throw conflict(ERROR_CODES.CONFLICT, 'That slug is already taken on this show');
+
+  return prisma.contestant.create({
+    data: {
+      showId,
+      slug: input.slug,
+      displayName: input.displayName,
+      tagline: input.tagline ?? null,
+      bio: input.bio ?? null,
+      avatarUrl: input.avatarUrl ?? null,
+      age: input.age ?? null,
+      occupation: input.occupation ?? null,
+      hometown: input.hometown ?? null,
+      enteredAt: new Date(),
+    },
+  });
+}
+
+export async function updateContestant(
+  contestantId: string,
+  input: Partial<Omit<CreateContestantInput, 'slug'>>,
+) {
+  const contestant = await prisma.contestant.findFirst({
+    where: { id: contestantId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!contestant) throw notFound('That contestant does not exist');
+
+  return prisma.contestant.update({
+    where: { id: contestantId },
+    data: {
+      ...(input.displayName !== undefined ? { displayName: input.displayName } : {}),
+      ...(input.tagline !== undefined ? { tagline: input.tagline } : {}),
+      ...(input.bio !== undefined ? { bio: input.bio } : {}),
+      ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {}),
+      ...(input.age !== undefined ? { age: input.age } : {}),
+      ...(input.occupation !== undefined ? { occupation: input.occupation } : {}),
+      ...(input.hometown !== undefined ? { hometown: input.hometown } : {}),
+    },
+  });
+}
+
+/**
+ * Status changes.
+ *
+ * EVICTED and WINNER are outcomes of the show, so they stamp `exitedAt` and a
+ * return to ACTIVE clears it. Nothing here deletes a contestant: their votes,
+ * heat history and prediction options all reference them, and removing the row
+ * would silently rewrite past results.
+ */
+export async function setContestantStatus(contestantId: string, status: ContestantStatus) {
+  const contestant = await prisma.contestant.findFirst({
+    where: { id: contestantId, deletedAt: null },
+    select: { id: true, status: true },
+  });
+  if (!contestant) throw notFound('That contestant does not exist');
+
+  if (contestant.status === status) {
+    throw new AppError({
+      code: ERROR_CODES.INVALID_STATE_TRANSITION,
+      message: `That contestant is already ${status.toLowerCase()}`,
+      statusCode: 409,
+    });
+  }
+
+  const leaving = status === 'EVICTED' || status === 'WINNER';
+
+  return prisma.contestant.update({
+    where: { id: contestantId },
+    data: {
+      status,
+      ...(leaving ? { exitedAt: new Date() } : { exitedAt: null }),
+    },
+  });
+}
+
+/**
+ * The operator list.
+ *
+ * Unlike the public list this includes every status and carries the engagement
+ * counts an operator needs to judge whether a contestant is actually landing
+ * with the audience.
+ */
+export async function listContestantsForAdmin() {
+  const showId = await getCurrentShowId();
+
+  const contestants = await prisma.contestant.findMany({
+    where: { showId, deletedAt: null },
+    orderBy: [{ status: 'asc' }, { heatScore: 'desc' }],
+    include: {
+      _count: {
+        select: {
+          predictionOptions: true,
+          perspectiveOptions: true,
+          events: true,
+          heatSnapshots: true,
+        },
+      },
+    },
+  });
+
+  return contestants.map((contestant) => ({
+    id: contestant.id,
+    slug: contestant.slug,
+    displayName: contestant.displayName,
+    tagline: contestant.tagline,
+    avatarUrl: contestant.avatarUrl,
+    occupation: contestant.occupation,
+    hometown: contestant.hometown,
+    age: contestant.age,
+    status: contestant.status,
+    heatScore: contestant.heatScore,
+    heatTrend: contestant.heatTrend,
+    heatUpdatedAt: contestant.heatUpdatedAt?.toISOString() ?? null,
+    enteredAt: contestant.enteredAt?.toISOString() ?? null,
+    exitedAt: contestant.exitedAt?.toISOString() ?? null,
+    engagement: {
+      predictionOptions: contestant._count.predictionOptions,
+      perspectiveOptions: contestant._count.perspectiveOptions,
+      events: contestant._count.events,
+      heatSnapshots: contestant._count.heatSnapshots,
+    },
+  }));
 }

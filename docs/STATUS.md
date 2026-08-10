@@ -1,6 +1,6 @@
 # Build status
 
-**Last updated:** end of Phase 16.
+**Last updated:** end of Phase 17.
 
 Everything below was executed and observed, not assumed. Per-phase detail is in
 [`PHASE_REPORTS.md`](PHASE_REPORTS.md); the design is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -13,7 +13,7 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | --- | --- | --- |
 | Typecheck | `pnpm typecheck` | 7/7 packages |
 | Lint | `pnpm lint` | 5/5 packages, 0 warnings |
-| Tests | `pnpm test` | **531 passed** (524 API across 27 files, 7 shared) |
+| Tests | `pnpm test` | **561 passed** (554 API across 28 files, 7 shared) |
 | Build | `pnpm build` | 4/4 (API bundle + Next production build) |
 | Migrations | `prisma migrate deploy` | 8 migrations, applied cleanly, no drift |
 | Seed | `pnpm db:seed` | idempotent, completes |
@@ -21,7 +21,7 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 
 ---
 
-## Phases complete: 0 – 16
+## Phases complete: 0 – 17
 
 | Phase | Delivered |
 | --- | --- |
@@ -42,6 +42,7 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | **14** | Reward Economy: catalogue, inventory, eligibility rules and a validated redemption lifecycle. Redemption is one transaction that claims stock atomically before debiting the ledger — 100 concurrent redeemers against 10 units yield exactly 10 winners. Physical and experience rewards carry the same authorisation gate as weekend participation |
 | **15** | Leaderboard System: `PointsLedger` → idempotent projector → Redis sorted sets, never an aggregate query at request time. Daily / weekly / season windows on a configurable board timezone, plus friends and community boards. Competition ranking with tie handling, rank movement from snapshots, privacy controls, and admin rebuild / snapshot / freeze / export / inspect. 1000 simultaneous events lose no updates |
 | **16** | Notification System: features emit domain events to a durable outbox; the notification module subscribes. No feature imports it. Deduplicated per (event, entity, user), preference-respecting, template-driven, with IN_APP delivering and EMAIL/PUSH declared as real providers that report themselves unconfigured. Admin health, failure inspection and retry. 1000 identical events yield one notification per user |
+| **17** | Producer/Admin console at `/admin`: eleven sections over the endpoints that already existed, plus the three genuine gaps (contestant management, operator lists for predictions and polls, an audit reader). Sections resolve server-side from the caller's permissions — moderator 5, producer 10, admin 11, viewer refused. Audit trail filterable by module, action, actor, target and date, and provably read-only |
 
 ### Things worth knowing
 
@@ -73,17 +74,23 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 - **Background fan-outs are tracked.** `settleDomainEvents()` is awaited by the test reset and by
   graceful shutdown; without it a fire-and-forget write deadlocks against `TRUNCATE` and a deploy
   can cut a fan-out in half.
-- Remaining 404 route: `/admin` itself (the `/admin/challenges` moderation queue and the
-  `/admin/rewards`, `/admin/leaderboard` and `/admin/notifications` dashboards all exist). The
-  sidebar prefetches it, which is the only source of console errors in the app today.
+- **The console duplicates no business logic.** Closing a poll from `/admin/polls` is the same
+  `POST /polls/admin/:id/close` the platform already exposed — same permission check, same audit
+  row. Phase 17 added services only where none existed.
+- **`GET /admin/sections` decides the sidebar**, so it never shows a door that will not open. It is
+  not the security boundary: every endpoint checks independently, and a test proves a moderator
+  calling a producer route directly still gets a 403.
+- **The kitchen concurrency tests are load-sensitive.** A full run alongside the dev servers once
+  failed 24 of them; the same run with the servers stopped is green. Worth knowing before treating
+  it as a regression.
+- No 404 routes remain in the navigation.
 
 ---
 
-## Remaining: Phases 17 – 24
+## Remaining: Phases 18 – 24
 
 | Phase | Scope | Notes for whoever picks this up |
 | --- | --- | --- |
-| 17 | Admin/Producer dashboard | `writeAudit` and the permission catalogue are ready; `/admin/challenges` (moderation queue) already exists as a template. |
 | 18 | Security hardening | Idempotency-key table exists but is not yet wired into vote endpoints. |
 | 19 | Analytics | `AnalyticsEvent` + rollup models exist; taxonomy is in `ANALYTICS_EVENT_NAMES`. |
 | 20 | UI/UX polish | Loading/empty/error states already exist as components. |

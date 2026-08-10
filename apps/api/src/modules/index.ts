@@ -1,6 +1,7 @@
 import { API_PREFIX } from '@reality/shared';
 import type { FastifyInstance } from 'fastify';
 
+import { adminRoutes } from './admin/admin.routes.js';
 import { authRoutes } from './auth/auth.routes.js';
 import { challengeRoutes } from './challenges/challenges.routes.js';
 import { contestantRoutes } from './contestants/contestants.routes.js';
@@ -19,7 +20,7 @@ import { showRoutes } from './show/show.routes.js';
 import { userRoutes } from './users/users.routes.js';
 import { weekendRoutes } from './weekend/weekend.routes.js';
 
-const MODULES = ['health', 'auth', 'users', 'show', 'dashboard', 'contestants', 'predictions', 'challenges', 'perspectives', 'polls', 'nominations', 'evictions', 'kitchen', 'weekend', 'rewards', 'leaderboards', 'notifications'];
+const MODULES = ['health', 'auth', 'users', 'show', 'dashboard', 'contestants', 'predictions', 'challenges', 'perspectives', 'polls', 'nominations', 'evictions', 'kitchen', 'weekend', 'rewards', 'leaderboards', 'notifications', 'admin'];
 
 /**
  * Single registration point for every feature module.
@@ -54,6 +55,7 @@ export async function registerModules(app: FastifyInstance): Promise<void> {
       await api.register(rewardRoutes, { prefix: '/rewards' });
       await api.register(leaderboardRoutes, { prefix: '/leaderboards' });
       await api.register(notificationRoutes, { prefix: '/notifications' });
+      await api.register(adminRoutes, { prefix: '/admin' });
     },
     { prefix: API_PREFIX },
   );
