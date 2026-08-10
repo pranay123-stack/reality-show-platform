@@ -5,10 +5,11 @@ import {
   Badge,
   Button,
   Card,
+  cn,
   EmptyState,
   ErrorState,
   LoadingState,
-  cn,
+  PageHeader,
   type BadgeProps,
 } from '@reality/ui';
 import { ArrowLeft, Gift } from 'lucide-react';
@@ -56,12 +57,10 @@ export function MyRewardsPage() {
         </Link>
       </Button>
 
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">My rewards</h1>
-        <p className="text-sm text-muted">
-          Everything you have redeemed, and where each one has got to.
-        </p>
-      </header>
+      <PageHeader
+        title="My rewards"
+        description="Everything you have redeemed, and where each one has got to."
+      />
 
       {isLoading ? (
         <LoadingState rows={3} />

@@ -1711,3 +1711,127 @@ of the log.
 
 `pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 638 passed ·
 `pnpm build` 4/4.
+
+---
+
+## Phase 20 — UI/UX Polish
+
+No new behaviour. The brief was to make what exists feel finished, so the work
+divided cleanly in two: absorbing markup that had been rebuilt by hand, and
+fixing the defects that all that hand-rebuilding had been hiding.
+
+### What the duplication was actually costing
+
+A scan for repeated markup found the usual thing — and one result that mattered
+more than the rest. Nineteen screens each wrote their own page header, and they
+had drifted into **two different `h1` treatments**:
+
+- `text-display-md font-semibold` — twelve screens, all built in earlier phases
+- `text-2xl font-semibold tracking-tight` — seven screens, all built later
+
+Nobody chose that. It happened one file at a time, which is exactly the failure
+a component prevents. Five components now own these shapes:
+
+| Component | Absorbed | Notes |
+| --- | --- | --- |
+| `PageHeader` | 20 headers | One heading treatment. `size="compact"` for the console, where a fluid 36 px title above a dense table is wasted space rather than presence — an explicit, documented distinction instead of an accident |
+| `SectionCard` | 10 `Card` + `h2` blocks | Body wrapped in `min-w-0`, which is what stops wide content widening the page |
+| `FilterChips` | 9 chip rows | Three different heights and three different sets of ARIA became one |
+| `StatusBadge` | console-local | Promoted to `@reality/ui`; the audience side wanted it too |
+| `ConfirmDialog` | console-local `ActionDialog` | Same |
+
+`FilterChips` also settled a semantics question. Several hand-rolled rows
+claimed `role="tab"` while implementing none of what a `tablist` owes a keyboard
+user — no arrow keys, no roving tabindex. They are filters, not tabs, so they
+are now toggle buttons in a labelled group. Where a genuine tab-panel
+relationship exists the app already uses Radix `Tabs`, which does implement it.
+
+### The defects underneath
+
+Consolidating the markup put every screen through the same code path, and that
+is what surfaced these. Each was reproduced before it was fixed.
+
+**The production build never hydrated.** Phase 18 set `script-src 'self'`,
+dropping `'unsafe-inline'` — the right instinct, and never checked against a
+production build. The App Router bootstraps every page with inline `<script>`
+tags carrying the flight payload, so the policy blocked React from starting:
+every page in `pnpm build` served a dead shell with no interactivity at all.
+Development hid it completely, because dev keeps `'unsafe-inline'` for React
+Refresh. A per-request nonce was tried first and cannot work here — a nonce must
+be unique per response and 30 of these routes are statically prerendered, so
+nonces would mean giving up static rendering across the app. `'unsafe-inline'`
+is back, with `object-src 'none'`, `base-uri 'self'`, `form-action 'self'` and
+no `'unsafe-eval'` in production doing the work instead. Documented as an
+accepted trade-off rather than a silent revert.
+
+**Five pages had no `h1`.** Sign-in, sign-up, forgot-password, reset-password
+and verify-email each rendered their title through `CardTitle`, an `h3`. Their
+document outline started at level three with nothing above it. `CardTitle` now
+takes `as`, and the challenge composer had the same problem.
+
+**`FormField` did not do what its own comment said.** The comment claimed it
+"wires up the aria relationships so a screen reader announces the error with the
+field". It rendered `<p id="{id}-error">` and never pointed anything at it, so
+the message sat on the page as unattached prose; `required` drew a red asterisk
+and told assistive technology nothing. It now injects `aria-describedby`,
+`aria-invalid` and `aria-required` into the control it wraps, so the wiring
+cannot be forgotten on the twentieth form.
+
+**`Alert` made every standing explanation a live region.** Non-danger alerts
+carried `role="status"`, so "confirm your email to take part" and "you choose
+the food, not the budget" announced themselves on load and drowned out the one
+announcement that mattered — "Loading…". Live is now opt-in, with `danger`
+opting in on its own.
+
+**The weekend screen blanked its own header** while loading and on error, unlike
+every other screen, so a slow request lost the reader's place.
+
+**Targets below the WCAG 2.2 minimum.** SC 2.5.8 asks for 24 px. Footer
+navigation was 20 px, the console's card links 16–17 px, the mobile logo 24 px
+beside a 40 px menu button, and a row of contestant links 16 px. All now clear
+24 px. The one exception left is deliberate: "Create an account" sits inside the
+sentence "New here? Create an account", which the criterion explicitly exempts.
+
+Also: dialogs without a description left `aria-describedby` dangling, and two
+different loading treatments — `animate-pulse` placeholders beside the shimmer
+`Skeleton` everywhere else — became one.
+
+### Animation
+
+`slide-up` had been defined in the theme since Phase 4 and never used. It is now
+the page transition, keyed on pathname so it replays per navigation.
+`prefers-reduced-motion` was already honoured globally, which reduces it to an
+instant appearance. Nothing else was added.
+
+### Tests
+
+95 new tests, in the four areas jsdom can honestly speak to:
+
+| File | Covers |
+| --- | --- |
+| `packages/ui/tests/components.test.tsx` | 26 — the shared surface, including the status-tone mapping and that `ConfirmDialog` keeps cancel reachable mid-flight |
+| `apps/web/tests/ui/screens.test.tsx` | every audience screen renders under exactly one `h1`, signed in and signed out; permission refusals |
+| `apps/web/tests/ui/states.test.tsx` | loading announces politely and keeps the heading; failure is an alert with a working retry; empty is distinguishable from failed; no transport detail reaches the reader |
+| `apps/web/tests/ui/interaction.test.tsx` | keyboard reachability, and form feedback — association, required, no submit while invalid, no double submit |
+| `apps/web/tests/ui/layout.test.tsx` | the two contracts the shipped overflow bugs violated |
+
+The layout file is deliberately modest about itself: jsdom has no layout engine,
+so it asserts the *contract* — wide content inside a scroll container, grid and
+flex children carrying `min-w-0`, no `sr-only` on a `<table>` — and leaves the
+pixels to the browser pass.
+
+### Live verification
+
+`node apps/web/scripts/audit-ui.mjs`, against a **production** build, because
+that distinction turned out to be the whole story of this phase.
+
+| Check | Result |
+| --- | --- |
+| Page/viewport combinations measured | **96** (32 pages × 1440 / 834 / 390) |
+| Maximum horizontal overflow | **0 px** |
+| Pages not owning exactly one `h1` | **0** |
+| Interactive targets under 24 px | **0** |
+| Uncaught JavaScript errors | **0** |
+
+`pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 733 passed ·
+`pnpm build` 4/4.

@@ -7,9 +7,10 @@ import {
   Card,
   EmptyState,
   ErrorState,
+  FilterChips,
   LoadingState,
+  PageHeader,
   ProgressBar,
-  cn,
 } from '@reality/ui';
 import { Coins, Gift, History } from 'lucide-react';
 import Link from 'next/link';
@@ -45,34 +46,19 @@ export function RewardsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Points &amp; Rewards</h1>
-        <p className="text-sm text-muted">
-          Points are earned by taking part in the show. Spend them here — spending never costs you
-          a level.
-        </p>
-      </header>
+      <PageHeader
+        title="Points & Rewards"
+        description="Points are earned by taking part in the show. Spend them here — spending never costs you a level."
+      />
 
       {isAuthenticated && <BalanceCard balance={balance} level={level.data ?? null} />}
 
-      <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Reward categories">
-        {FILTERS.map((option) => (
-          <button
-            key={option.key}
-            type="button"
-            onClick={() => setFilter(option.key)}
-            aria-pressed={filter === option.key}
-            className={cn(
-              'shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors',
-              filter === option.key
-                ? 'border-primary/50 bg-primary/15 text-foreground'
-                : 'border-border text-muted hover:border-border-strong hover:text-foreground',
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </nav>
+      <FilterChips
+        label="Reward categories"
+        value={filter}
+        onChange={setFilter}
+        options={FILTERS.map((option) => ({ value: option.key, label: option.label }))}
+      />
 
       {isLoading ? (
         <LoadingState rows={4} />

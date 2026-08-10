@@ -1,7 +1,15 @@
 'use client';
 
 import type { AdminOverviewView } from '@reality/shared';
-import { Badge, Card, ErrorState, LiveIndicator, LoadingState, cn } from '@reality/ui';
+import {
+  Badge,
+  cn,
+  ErrorState,
+  LiveIndicator,
+  LoadingState,
+  PageHeader,
+  SectionCard,
+} from '@reality/ui';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Flame } from 'lucide-react';
 import Link from 'next/link';
@@ -23,35 +31,35 @@ export function AdminOverview() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Console</h1>
-          {data.show ? (
-            <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
+      <PageHeader
+        size="compact"
+        title="Console"
+        description={
+          data.show ? (
+            <span className="flex flex-wrap items-center gap-2">
               <LiveIndicator live={data.show.isLive} />
               {data.show.name}
               {data.show.episode && <span>· {data.show.episode}</span>}
-            </p>
+            </span>
           ) : (
-            <p className="text-sm text-muted">No show is currently configured.</p>
-          )}
-        </div>
-
-        <p className="text-xs text-muted">
-          Updated {new Date(data.generatedAt).toLocaleTimeString()}
-        </p>
-      </header>
+            'No show is currently configured.'
+          )
+        }
+        action={
+          <p className="text-xs text-muted">
+            Updated {new Date(data.generatedAt).toLocaleTimeString()}
+          </p>
+        }
+      />
 
       <DashboardCards cards={data.cards} />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="space-y-3 p-5">
-          <div className="space-y-0.5">
-            <h2 className="text-sm font-medium">Participation</h2>
-            <p className="text-xs text-muted">
-              Distinct people earning points each day, over the last week.
-            </p>
-          </div>
+        <SectionCard
+          title="Participation"
+          description="Distinct people earning points each day, over the last week."
+          bodyClassName="space-y-3"
+        >
 
           <BarChart
             label="Participants per day over the last seven days"
@@ -84,22 +92,25 @@ export function AdminOverview() {
             </tbody>
           </table>
           </div>
-        </Card>
+        </SectionCard>
 
-        <Card className="space-y-3 p-5">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-sm font-medium">
+        <SectionCard
+          title={
+            <>
               <Flame className="h-4 w-4 text-heat-3" aria-hidden />
               Trending contestants
-            </h2>
+            </>
+          }
+          action={
             <Link
               href="/admin/contestants"
-              className="flex items-center gap-1 text-xs text-primary hover:underline"
+              className="inline-flex min-h-6 items-center gap-1 text-xs text-primary hover:underline"
             >
               Manage
               <ArrowRight className="h-3 w-3" aria-hidden />
             </Link>
-          </div>
+          }
+        >
 
           {data.trendingContestants.length === 0 ? (
             <p className="text-sm text-muted">No contestants are in play.</p>
@@ -124,7 +135,7 @@ export function AdminOverview() {
               ))}
             </ol>
           )}
-        </Card>
+        </SectionCard>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -181,13 +192,14 @@ function QueuePanel({
   rows: { label: string; value: number; alarming?: boolean }[];
 }) {
   return (
-    <Card className="space-y-3 p-5">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-medium">{title}</h2>
-        <Link href={href} className="text-xs text-primary hover:underline">
+    <SectionCard
+      title={title}
+      action={
+        <Link href={href} className="inline-flex min-h-6 items-center text-xs text-primary hover:underline">
           Open
         </Link>
-      </div>
+      }
+    >
 
       <dl className="space-y-2">
         {rows.map((row) => (
@@ -204,6 +216,6 @@ function QueuePanel({
           </div>
         ))}
       </dl>
-    </Card>
+    </SectionCard>
   );
 }

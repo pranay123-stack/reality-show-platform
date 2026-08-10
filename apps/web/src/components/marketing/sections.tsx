@@ -382,7 +382,7 @@ export function SiteFooter() {
             ['Rewards', '#rewards'],
             ['Leaderboard', '#leaderboard'],
           ].map(([label, href]) => (
-            <a key={href} href={href} className="block text-muted transition-colors hover:text-foreground">
+            <a key={href} href={href} className="flex min-h-6 items-center text-muted transition-colors hover:text-foreground">
               {label}
             </a>
           ))}
@@ -390,15 +390,15 @@ export function SiteFooter() {
 
         <nav aria-label="Account" className="space-y-2 text-sm">
           <p className="font-medium">Account</p>
-          <Link href="/signup" className="block text-muted transition-colors hover:text-foreground">
+          <Link href="/signup" className="flex min-h-6 items-center text-muted transition-colors hover:text-foreground">
             Create account
           </Link>
-          <Link href="/login" className="block text-muted transition-colors hover:text-foreground">
+          <Link href="/login" className="flex min-h-6 items-center text-muted transition-colors hover:text-foreground">
             Sign in
           </Link>
           <Link
             href="/forgot-password"
-            className="block text-muted transition-colors hover:text-foreground"
+            className="flex min-h-6 items-center text-muted transition-colors hover:text-foreground"
           >
             Reset password
           </Link>

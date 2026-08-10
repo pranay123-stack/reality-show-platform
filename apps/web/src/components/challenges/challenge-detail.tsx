@@ -59,7 +59,7 @@ export function ChallengeDetail({ id }: { id: string }) {
     <div className="mx-auto max-w-3xl space-y-6">
       <Link
         href="/challenges"
-        className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
+        className="inline-flex min-h-6 items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden />
         All challenges

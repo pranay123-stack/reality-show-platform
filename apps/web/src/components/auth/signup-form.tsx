@@ -59,7 +59,7 @@ export function SignupForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">Create your account</CardTitle>
+        <CardTitle as="h1" className="text-2xl">Create your account</CardTitle>
         <p className="text-sm text-muted">
           One account per person — you will confirm your email before you can take part.
         </p>

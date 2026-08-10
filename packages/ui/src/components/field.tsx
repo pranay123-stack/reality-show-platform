@@ -2,7 +2,15 @@
 
 import * as LabelPrimitive from '@radix-ui/react-label';
 import { AlertCircle } from 'lucide-react';
-import { forwardRef, useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react';
+import {
+  cloneElement,
+  forwardRef,
+  isValidElement,
+  useId,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type TextareaHTMLAttributes,
+} from 'react';
 
 import { cn } from '../lib/cn';
 
@@ -39,6 +47,14 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<H
   },
 );
 
+/** The attributes `FormField` injects into whichever control it wraps. */
+interface ControlProps {
+  id?: string;
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean | 'true' | 'false';
+  'aria-required'?: boolean | 'true' | 'false';
+}
+
 export interface FormFieldProps {
   label: string;
   htmlFor?: string;
@@ -66,6 +82,30 @@ export function FormField({
   const generatedId = useId();
   const id = htmlFor ?? generatedId;
 
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+
+  /*
+    The hint and error text carry ids, but nothing pointed at them: a screen
+    reader read "Email, edit text" and left the reason the field was rejected
+    sitting on the page as unattached prose. The same went for `required`, which
+    drew a red asterisk and told assistive technology nothing.
+
+    Injecting rather than asking each call site to repeat it means the wiring
+    cannot be forgotten on the twentieth form. Anything the caller set
+    explicitly still wins.
+  */
+  const control = isValidElement<ControlProps>(children)
+    ? cloneElement(children, {
+        id: children.props.id ?? id,
+        'aria-describedby': children.props['aria-describedby'] ?? describedBy,
+        'aria-invalid': children.props['aria-invalid'] ?? (error ? true : undefined),
+        // `aria-required` rather than the native attribute: these forms set
+        // `noValidate` and own their validation, and a native bubble on top of
+        // an inline message says the same thing twice in two different places.
+        'aria-required': children.props['aria-required'] ?? (required || undefined),
+      })
+    : children;
+
   return (
     <div className={cn('space-y-1.5', className)}>
       <Label htmlFor={id}>
@@ -78,7 +118,7 @@ export function FormField({
         {required && <span className="sr-only"> (required)</span>}
       </Label>
 
-      {children}
+      {control}
 
       {hint && !error && (
         <p id={`${id}-hint`} className="text-xs text-muted">

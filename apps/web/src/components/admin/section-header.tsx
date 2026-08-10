@@ -1,5 +1,6 @@
 'use client';
 
+import { PageHeader } from '@reality/ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
@@ -15,15 +16,9 @@ export function SectionHeader({
   description?: string;
   action?: ReactNode;
 }) {
-  return (
-    <header className="flex flex-wrap items-start justify-between gap-4">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="text-sm text-muted">{description}</p>}
-      </div>
-      {action}
-    </header>
-  );
+  // Every console page routes through here, which is what keeps the operator
+  // side on one heading treatment rather than the two it had drifted into.
+  return <PageHeader size="compact" title={title} description={description} action={action} />;
 }
 
 /**

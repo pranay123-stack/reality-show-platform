@@ -11,6 +11,7 @@ export {
   CardFooter,
   CardHeader,
   CardTitle,
+  type CardTitleProps,
 } from './components/card';
 export { Alert, type AlertProps } from './components/alert';
 export {
@@ -18,17 +19,35 @@ export {
   Badge,
   LiveIndicator,
   ProgressBar,
+  StatusBadge,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
+  statusTone,
   type AvatarProps,
   type BadgeProps,
   type ProgressBarProps,
+  type StatusBadgeProps,
 } from './components/primitives';
+
+// Layout
+export {
+  PageHeader,
+  SectionCard,
+  type PageHeaderProps,
+  type SectionCardProps,
+} from './components/layout';
+export {
+  FilterChips,
+  chipClassName,
+  type FilterChipOption,
+  type FilterChipsProps,
+} from './components/filter-chips';
 
 // Overlays
 export {
+  ConfirmDialog,
   Drawer,
   DrawerClose,
   DrawerContent,
@@ -37,6 +56,7 @@ export {
   ModalClose,
   ModalContent,
   ModalTrigger,
+  type ConfirmDialogProps,
   type DrawerContentProps,
   type ModalContentProps,
 } from './components/overlays';

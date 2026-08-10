@@ -33,7 +33,7 @@ export function ContestantDetail({ id }: { id: string }) {
     <div className="space-y-6">
       <Link
         href="/contestants"
-        className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
+        className="inline-flex min-h-6 items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden />
         All contestants

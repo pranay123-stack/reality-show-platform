@@ -36,6 +36,8 @@ import { useAuth } from '@/providers/auth-provider';
  * to know which layout they are in.
  */
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[17rem_1fr]">
       <DesktopSidebar />
@@ -43,7 +45,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-h-dvh flex-col">
         <TopBar />
         <main id="main" className="flex-1 px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-10">
-          <div className="mx-auto w-full max-w-6xl">{children}</div>
+          {/*
+            Keyed on the path so the enter animation replays per navigation
+            rather than once per session. `prefers-reduced-motion` is honoured
+            globally, which reduces this to an instant appearance.
+          */}
+          <div key={pathname} className="mx-auto w-full max-w-6xl animate-slide-up">
+            {children}
+          </div>
         </main>
       </div>
 
@@ -149,7 +158,7 @@ function DesktopSidebar() {
   return (
     <aside className="sticky top-0 hidden h-dvh flex-col border-r border-border bg-surface/40 lg:flex">
       <div className="flex h-16 items-center border-b border-border px-5">
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold tracking-tight">
+        <Link href="/dashboard" className="flex min-h-10 items-center gap-2 font-semibold tracking-tight">
           <span
             aria-hidden
             className="h-6 w-6 rounded-md bg-gradient-to-br from-primary to-accent shadow-glow"
@@ -203,7 +212,10 @@ function TopBar() {
       <div className="flex h-16 items-center gap-3 px-4 sm:px-6 lg:px-8">
         <MobileMenu />
 
-        <Link href="/dashboard" className="font-semibold tracking-tight lg:hidden">
+        <Link
+          href="/dashboard"
+          className="inline-flex h-10 items-center font-semibold tracking-tight lg:hidden"
+        >
           {env.appName}
         </Link>
 

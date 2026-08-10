@@ -23,7 +23,7 @@ what is actually load-bearing.
 | F8 | Low | A uniqueness conflict returned the offending database column names | Fixed |
 | F9 | Low | Rate limits keyed only on IP, so an authenticated abuser could rotate addresses | Fixed |
 | F10 | Low | Three dependency advisories (2 high, 1 low) | Fixed |
-| F11 | Info | No Content-Security-Policy on the web app | Fixed |
+| F11 | Info | No Content-Security-Policy on the web app | Fixed — `script-src` amended in Phase 20, see below |
 
 Ten of the eleven were introduced by this codebase; F10 came from dependencies.
 
@@ -173,6 +173,23 @@ The web app had sensible headers but no Content-Security-Policy. Added — `obje
 development. This is defence in depth rather than the primary defence: React escapes what it
 renders and no component uses `dangerouslySetInnerHTML`. It is what catches the mistake somebody
 makes later.
+
+> **Amended in Phase 20.** `script-src` now allows `'unsafe-inline'` in production as well.
+> The directive above was only ever exercised against `next dev`, which keeps `'unsafe-inline'`
+> for React Refresh. Against a production build it blocked the App Router's inline bootstrap
+> scripts, so **React never hydrated and every page served a dead shell** — a total loss of
+> function that no test caught because nothing ran against `pnpm build`.
+>
+> A per-request nonce is the strict alternative and does not work here: a nonce must be unique
+> per response, and 30 of these routes are statically prerendered to HTML at build time, so
+> nonces would mean abandoning static rendering across the app. That is a larger decision than
+> a header, and not one to make silently while polishing UI.
+>
+> **Accepted risk:** an injected inline `<script>` would execute if one ever reached the DOM.
+> What still stands against it: React escapes all rendered output, no component uses
+> `dangerouslySetInnerHTML`, `'unsafe-eval'` remains absent in production, and `object-src
+> 'none'` / `base-uri 'self'` / `form-action 'self'` close the usual bypasses. Revisiting means
+> deciding whether these routes should be dynamically rendered — see Phase 22.
 
 ---
 

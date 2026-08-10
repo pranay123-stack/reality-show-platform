@@ -39,6 +39,72 @@ export function Badge({ className, tone, size, ...props }: BadgeProps) {
   return <span className={cn(badgeVariants({ tone, size }), className)} {...props} />;
 }
 
+/**
+ * A domain status rendered as a chip.
+ *
+ * Every feature has its own status enum, but they share a small vocabulary —
+ * something is live, something is waiting on a human, something ended badly.
+ * Mapping that vocabulary once means a `PENDING` challenge and a `PENDING`
+ * redemption look the same to a reader, which is the whole point of a status
+ * colour. An unrecognised status stays neutral rather than guessing.
+ */
+/*
+  Matched on underscore-separated segments rather than as a substring, so
+  `IN_MODERATION` and `PENDING_VERIFICATION` land on the same colour as the bare
+  words while a status that merely *contains* one of these letter runs does not
+  get coloured by accident. Danger is tested first: a status that is both
+  finished and failed is failed.
+*/
+const STATUS_TONES: [BadgeProps['tone'], Set<string>][] = [
+  [
+    'danger',
+    new Set([
+      'REJECTED', 'CANCELLED', 'CANCELED', 'FAILED', 'EVICTED', 'RETIRED',
+      'EXPIRED', 'BLOCKED', 'SUSPENDED', 'BANNED', 'DECLINED',
+    ]),
+  ],
+  [
+    'warning',
+    new Set([
+      'PENDING', 'MODERATION', 'SUBMITTED', 'RESERVED', 'DRAFT', 'SCHEDULED',
+      'PAUSED', 'SHORTLIST', 'SHORTLISTED', 'QUEUED', 'NOMINATED', 'REVIEW',
+      'REQUESTED', 'UPCOMING', 'ESCALATED', 'SELECTION', 'VOTING',
+    ]),
+  ],
+  [
+    'success',
+    new Set([
+      'ACTIVE', 'OPEN', 'APPROVED', 'SELECTED', 'LIVE', 'AVAILABLE', 'FULFILLED',
+      'PROCESSED', 'SENT', 'WINNER', 'RESOLVED', 'COMPLETED', 'PUBLISHED',
+      'ACCEPTED', 'EXECUTED', 'FINALIZED', 'IMMUNE', 'SAFE',
+    ]),
+  ],
+];
+
+/** Lifecycle ends — `CLOSED`, `ENDED`, `ARCHIVED` — stay neutral by default. */
+export function statusTone(status: string): BadgeProps['tone'] {
+  const segments = status.toUpperCase().split('_');
+  return STATUS_TONES.find(([, words]) => segments.some((word) => words.has(word)))?.[0] ?? 'neutral';
+}
+
+export interface StatusBadgeProps {
+  status: string;
+  /** Overrides the humanised status text without changing the colour. */
+  label?: string;
+  size?: BadgeProps['size'];
+  className?: string;
+}
+
+export function StatusBadge({ status, label, size = 'sm', className }: StatusBadgeProps) {
+  const tone = statusTone(status);
+
+  return (
+    <Badge tone={tone} size={size} className={className}>
+      {label ?? status.replace(/_/g, ' ').toLowerCase()}
+    </Badge>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Avatar
 // ---------------------------------------------------------------------------

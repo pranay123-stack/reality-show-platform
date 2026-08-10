@@ -60,6 +60,10 @@ export const ModalContent = forwardRef<
           'data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95',
           className,
         )}
+        // Radix points `aria-describedby` at a description element by default.
+        // A dialog whose title says everything is a legitimate shape, but the
+        // reference then dangles and Radix warns; clearing it is the fix.
+        {...(description ? null : { 'aria-describedby': undefined })}
         {...props}
       >
         <div className="flex items-start justify-between gap-4 p-6 pb-3">
@@ -89,6 +93,77 @@ export const ModalContent = forwardRef<
     </DialogPrimitive.Portal>
   );
 });
+
+export interface ConfirmDialogProps {
+  open: boolean;
+  title: string;
+  description?: string;
+  confirmLabel: string;
+  cancelLabel?: string;
+  /** Irreversible actions get the danger treatment. */
+  destructive?: boolean;
+  pending?: boolean;
+  /** Blocks confirmation without hiding why — the body should say what is missing. */
+  disabled?: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+  children?: ReactNode;
+}
+
+/**
+ * Confirmation before something a live show cannot take back — closing a poll,
+ * resolving a prediction, evicting a contestant. The friction is the point.
+ *
+ * Cancel is deliberately the first control in the tab order and stays enabled
+ * while the action is in flight, so an accidental confirm is always escapable.
+ */
+export function ConfirmDialog({
+  open,
+  title,
+  description,
+  confirmLabel,
+  cancelLabel = 'Cancel',
+  destructive,
+  pending,
+  disabled,
+  onConfirm,
+  onClose,
+  children,
+}: ConfirmDialogProps) {
+  if (!open) return null;
+
+  return (
+    <Modal open onOpenChange={(next) => !next && onClose()}>
+      <ModalContent
+        title={title}
+        description={description}
+        // Closing mid-flight would leave the operator with no idea whether the
+        // action landed, so the dialog holds until the request settles.
+        onInteractOutside={(event) => pending && event.preventDefault()}
+        onEscapeKeyDown={(event) => pending && event.preventDefault()}
+        footer={
+          <>
+            <ModalClose asChild>
+              <Button variant="ghost" disabled={pending}>
+                {cancelLabel}
+              </Button>
+            </ModalClose>
+            <Button
+              variant={destructive ? 'danger' : 'primary'}
+              loading={pending}
+              disabled={disabled}
+              onClick={onConfirm}
+            >
+              {confirmLabel}
+            </Button>
+          </>
+        }
+      >
+        {children}
+      </ModalContent>
+    </Modal>
+  );
+}
 
 // --- Drawer (mobile-first sheet) -------------------------------------------
 

@@ -1,18 +1,23 @@
 'use client';
 
-import { Alert, Button, Card, ErrorState, FormField, Input, Textarea } from '@reality/ui';
+import {
+  Alert,
+  Button,
+  Card,
+  ConfirmDialog,
+  ErrorState,
+  FormField,
+  Input,
+  StatusBadge,
+  Textarea,
+} from '@reality/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { DataTable, type Column } from '@/components/admin/data-table';
-import {
-  ActionDialog,
-  DistributionBar,
-  StatusBadge,
-  StatusPills,
-} from '@/components/admin/primitives';
+import { DistributionBar, StatusPills } from '@/components/admin/primitives';
 import { SectionHeader, useAdminMutation } from '@/components/admin/section-header';
 import { ApiError, api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
@@ -211,7 +216,7 @@ export function PollsSection() {
 
       {creating && <PollForm scopeKey={key} onClose={() => setCreating(false)} />}
 
-      <ActionDialog
+      <ConfirmDialog
         open={pending !== null}
         title={`${pending?.label ?? ''} this poll?`}
         description={pending?.poll.question}
@@ -235,7 +240,7 @@ export function PollsSection() {
             Publishing reveals the full split to every viewer.
           </p>
         )}
-      </ActionDialog>
+      </ConfirmDialog>
     </div>
   );
 }
@@ -316,7 +321,7 @@ function PollForm({ scopeKey, onClose }: { scopeKey: readonly unknown[]; onClose
   const ready = question.trim().length >= 5 && filled.length >= 2;
 
   return (
-    <ActionDialog
+    <ConfirmDialog
       open
       title="New live poll"
       description="Created as a draft so you can start it on cue."
@@ -400,6 +405,6 @@ function PollForm({ scopeKey, onClose }: { scopeKey: readonly unknown[]; onClose
           </p>
         </Card>
       </div>
-    </ActionDialog>
+    </ConfirmDialog>
   );
 }

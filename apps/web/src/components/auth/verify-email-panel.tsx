@@ -60,7 +60,7 @@ export function VerifyEmailPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">
+        <CardTitle as="h1" className="text-2xl">
           {state.kind === 'verified' ? 'Email confirmed' : 'Confirm your email'}
         </CardTitle>
       </CardHeader>

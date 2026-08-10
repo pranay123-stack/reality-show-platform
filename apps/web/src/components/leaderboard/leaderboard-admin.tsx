@@ -6,10 +6,11 @@ import {
   Badge,
   Button,
   Card,
+  FilterChips,
   FormField,
   Input,
   LoadingState,
-  cn,
+  PageHeader,
 } from '@reality/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, RefreshCw, Search, Snowflake } from 'lucide-react';
@@ -82,32 +83,18 @@ export function LeaderboardAdmin() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-display-md font-semibold">Leaderboard operations</h1>
-        <p className="text-muted">
-          Every ranking here is derived from the points ledger. Nothing on this page can set a
-          score — only recompute one.
-        </p>
-      </header>
+      <PageHeader
+        size="compact"
+        title="Leaderboard operations"
+        description="Every ranking here is derived from the points ledger. Nothing on this page can set a score — only recompute one."
+      />
 
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-        {WINDOWS.map((entry) => (
-          <button
-            key={entry}
-            type="button"
-            aria-pressed={window === entry}
-            onClick={() => setWindow(entry)}
-            className={cn(
-              'shrink-0 rounded-full border px-4 py-1.5 text-sm transition-colors',
-              window === entry
-                ? 'border-primary/50 bg-primary/15 text-foreground'
-                : 'border-border text-muted hover:border-border-strong hover:text-foreground',
-            )}
-          >
-            {entry.toLowerCase()}
-          </button>
-        ))}
-      </div>
+      <FilterChips
+        label="Ranking window"
+        value={window}
+        onChange={setWindow}
+        options={WINDOWS.map((entry) => ({ value: entry, label: entry.toLowerCase() }))}
+      />
 
       <Card className="space-y-4 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

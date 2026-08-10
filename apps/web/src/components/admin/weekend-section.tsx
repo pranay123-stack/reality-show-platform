@@ -1,13 +1,22 @@
 'use client';
 
 import type { WeekendRoundView } from '@reality/shared';
-import { Alert, Badge, Button, Card, ErrorState, LoadingState } from '@reality/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  ConfirmDialog,
+  ErrorState,
+  LoadingState,
+  StatusBadge,
+} from '@reality/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { ActionDialog, StatusBadge, StatusPills } from '@/components/admin/primitives';
+import { StatusPills } from '@/components/admin/primitives';
 import { SectionHeader, useAdminMutation } from '@/components/admin/section-header';
 import { ApiError, api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
@@ -329,7 +338,7 @@ function RejectDialog({
   const [reason, setReason] = useState('');
 
   return (
-    <ActionDialog
+    <ConfirmDialog
       open={submission !== null}
       title="Reject this entry?"
       description="The author is told, and the reason is what they see."
@@ -353,6 +362,6 @@ function RejectDialog({
           placeholder="It named a person who has not consented to appear."
         />
       </label>
-    </ActionDialog>
+    </ConfirmDialog>
   );
 }

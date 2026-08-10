@@ -34,7 +34,7 @@ export function SiteHeader() {
       }`}
     >
       <div className="container flex h-16 items-center justify-between gap-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+        <Link href="/" className="flex min-h-10 items-center gap-2 font-semibold tracking-tight">
           <span
             aria-hidden
             className="h-6 w-6 rounded-md bg-gradient-to-br from-primary to-accent shadow-glow"

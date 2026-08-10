@@ -9,6 +9,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  cn,
   Countdown,
   EmptyState,
   ErrorState,
@@ -16,8 +17,8 @@ import {
   Modal,
   ModalClose,
   ModalContent,
+  PageHeader,
   ProgressBar,
-  cn,
 } from '@reality/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Clock, Info, ShieldCheck, Users } from 'lucide-react';
@@ -305,14 +306,10 @@ export function RoundScreen({ kind }: { kind: 'nominations' | 'evictions' }) {
 
 function Header({ kind }: { kind: 'nominations' | 'evictions' }) {
   return (
-    <header className="space-y-1">
-      <h1 className="text-display-md font-semibold">
-        {kind === 'nominations' ? 'Nomination' : 'Eviction'} round
-      </h1>
-      <p className="text-muted">
-        Take part in the audience vote. Your votes are limited and always your own.
-      </p>
-    </header>
+    <PageHeader
+      title={`${kind === 'nominations' ? 'Nomination' : 'Eviction'} round`}
+      description="Take part in the audience vote. Your votes are limited and always your own."
+    />
   );
 }
 

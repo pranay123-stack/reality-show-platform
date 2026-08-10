@@ -1,19 +1,24 @@
 'use client';
 
 import type { PredictionView } from '@reality/shared';
-import { Alert, Button, Card, ErrorState, FormField, Input, Textarea } from '@reality/ui';
+import {
+  Alert,
+  Button,
+  Card,
+  ConfirmDialog,
+  ErrorState,
+  FormField,
+  Input,
+  StatusBadge,
+  Textarea,
+} from '@reality/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { DataTable, type Column } from '@/components/admin/data-table';
-import {
-  ActionDialog,
-  DistributionBar,
-  StatusBadge,
-  StatusPills,
-} from '@/components/admin/primitives';
+import { DistributionBar, StatusPills } from '@/components/admin/primitives';
 import { SectionHeader, useAdminMutation } from '@/components/admin/section-header';
 import { ApiError, api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
@@ -177,7 +182,7 @@ export function PredictionsSection() {
 
       {creating && <PredictionForm scopeKey={key} onClose={() => setCreating(false)} />}
 
-      <ActionDialog
+      <ConfirmDialog
         open={pending !== null}
         title={`${pending?.verb === 'activate' ? 'Open' : pending?.verb === 'close' ? 'Close' : 'Cancel'} this prediction?`}
         description={pending?.prediction.question}
@@ -198,7 +203,7 @@ export function PredictionsSection() {
             Cancelling leaves entries in place but pays nobody. It cannot be undone.
           </p>
         )}
-      </ActionDialog>
+      </ConfirmDialog>
 
       {resolving && (
         <ResolveDialog prediction={resolving} scopeKey={key} onClose={() => setResolving(null)} />
@@ -294,7 +299,7 @@ function ResolveDialog({
   });
 
   return (
-    <ActionDialog
+    <ConfirmDialog
       open
       title="Resolve this prediction"
       description={prediction.question}
@@ -341,7 +346,7 @@ function ResolveDialog({
           Resolving credits every correct entry immediately and cannot be undone from here.
         </Alert>
       </div>
-    </ActionDialog>
+    </ConfirmDialog>
   );
 }
 
@@ -388,7 +393,7 @@ function PredictionForm({
   const ready = question.trim().length >= 5 && filled.length >= 2 && Boolean(closesAt);
 
   return (
-    <ActionDialog
+    <ConfirmDialog
       open
       title="New prediction"
       description="Created as a draft. Opening it is a separate step."
@@ -479,6 +484,6 @@ function PredictionForm({
           </p>
         </Card>
       </div>
-    </ActionDialog>
+    </ConfirmDialog>
   );
 }

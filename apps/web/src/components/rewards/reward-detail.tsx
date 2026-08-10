@@ -9,9 +9,10 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  cn,
   ErrorState,
   LoadingState,
-  cn,
+  PageHeader,
 } from '@reality/ui';
 import { ArrowLeft, Check, Coins, Lock, Package, X } from 'lucide-react';
 import Link from 'next/link';
@@ -56,20 +57,22 @@ export function RewardDetail({ rewardId }: { rewardId: string }) {
         </Link>
       </Button>
 
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="neutral" size="sm">
-            {CATEGORY_LABEL[data.category]}
-          </Badge>
-          {data.requiresProductionApproval && (
-            <Badge tone="warning" size="sm">
-              Production confirms
+      <PageHeader
+        title={data.name}
+        description={data.description ?? undefined}
+        meta={
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Badge tone="neutral" size="sm">
+              {CATEGORY_LABEL[data.category]}
             </Badge>
-          )}
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight">{data.name}</h1>
-        {data.description && <p className="text-sm text-muted">{data.description}</p>}
-      </header>
+            {data.requiresProductionApproval && (
+              <Badge tone="warning" size="sm">
+                Production confirms
+              </Badge>
+            )}
+          </div>
+        }
+      />
 
       {data.disclaimer && <Alert tone="warning">{data.disclaimer}</Alert>}
 

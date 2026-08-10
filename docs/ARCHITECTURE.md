@@ -400,7 +400,7 @@ pnpm start                # production start (after build)
 | 1 | Monorepo, tooling, Docker, `/health`, landing stub | typecheck + lint + test + build green; API reaches PG and Redis. |
 | 2 | Prisma schema, migrations, seed | migrate + seed run clean on an empty DB. |
 | 3 | Auth (email/password, verification, reset, sessions, roles, anti-duplicate) | auth test-suite green; protected + role-guarded routes enforced. |
-| 4 | Design system + production-quality landing page | components in `packages/ui`; responsive at 3 breakpoints. |
+| 4 | Design system + production-quality landing page | components in `packages/ui`; responsive at 3 breakpoints. Phase 20 added the layout components (`PageHeader`, `SectionCard`, `FilterChips`) that the screens had been rebuilding by hand. |
 | 5 | Authenticated shell, nav, dashboard skeleton | 8 feature cards + live/points/leaderboard widgets, API-backed where available. |
 | 6 | Contestants + `ContestantHeatService` + snapshots + charts | heat unit tests green; admin can inspect inputs. |
 | 7 | Prediction Game + admin lifecycle | duplicate + closed-prediction tests green; points via ledger. |
@@ -416,7 +416,7 @@ pnpm start                # production start (after build)
 | 17 | Admin/producer dashboard | every domain operable from `/admin`, driving the existing endpoints rather than duplicating them; sections resolved server-side per role; audit trail readable and filterable, and provably append-only. |
 | 18 | Security & abuse hardening | eleven findings fixed and re-tested; per-event WebSocket authorisation; URL scheme validation; socket and per-account rate limits; CSP; zero dependency advisories. See `SECURITY_AUDIT.md`. |
 | 19 | Analytics | raw log separated from pre-aggregated numbers so dashboards never scan events or transactional tables; client ingest limited to view events; opt-out stores nothing and erases history. |
-| 20 | UI/UX polish | loading/empty/error states, a11y, keyboard nav, contrast. |
+| 20 | UI/UX polish | One heading treatment across every screen; every page owns exactly one `h1`; 0 px overflow at 1440/834/390 measured against a **production** build; no interactive target under 24 px. |
 | 21 | Full test pass | unit + integration + Playwright E2E, all listed scenarios. |
 | 22 | Performance pass | load scenarios + bottleneck report + optimisations. |
 | 23 | Production Docker deployment | `docker-compose.prod.yml` stack verified from clean state. |

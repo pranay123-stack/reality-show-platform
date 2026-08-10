@@ -15,13 +15,14 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  cn,
   Countdown,
   EmptyState,
   ErrorState,
   FormField,
   LoadingState,
+  PageHeader,
   Textarea,
-  cn,
 } from '@reality/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarClock, Gift, Info, Trophy } from 'lucide-react';
@@ -72,8 +73,25 @@ export function WeekendScreen() {
       toast.error(error instanceof ApiError ? error.message : 'Could not send your entry'),
   });
 
-  if (isLoading) return <LoadingState rows={4} />;
-  if (isError) return <ErrorState onRetry={() => void refetch()} />;
+  // The header stays put through both: a page that blanks itself while loading
+  // loses the reader's place, and every other screen keeps its title.
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Header />
+        <LoadingState rows={4} />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <Header />
+        <ErrorState onRetry={() => void refetch()} />
+      </div>
+    );
+  }
 
   if (!data) {
     return (
@@ -173,13 +191,10 @@ export function WeekendScreen() {
 
 function Header() {
   return (
-    <header className="space-y-1">
-      <h1 className="text-display-md font-semibold">Weekend Participation</h1>
-      <p className="text-muted">
-        Send something in for the weekend episode. Entries are moderated, shortlisted, then chosen by
-        production.
-      </p>
-    </header>
+    <PageHeader
+      title="Weekend Participation"
+      description="Send something in for the weekend episode. Entries are moderated, shortlisted, then chosen by production."
+    />
   );
 }
 

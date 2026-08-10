@@ -1,7 +1,7 @@
 'use client';
 
 import type { LeaderboardScope, LeaderboardWindow } from '@reality/shared';
-import { cn } from '@reality/ui';
+import { FilterChips } from '@reality/ui';
 
 export interface LeaderboardTabsProps {
   scope: LeaderboardScope;
@@ -40,50 +40,20 @@ export function LeaderboardTabs({
   const scopes = SCOPES.filter((entry) => authenticated || !entry.needsAuth);
 
   return (
-    <div className="space-y-3">
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Who">
-        {scopes.map((entry) => (
-          <button
-            key={entry.key}
-            type="button"
-            role="tab"
-            aria-selected={scope === entry.key}
-            onClick={() => onScopeChange(entry.key)}
-            className={cn(
-              'shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
-              scope === entry.key
-                ? 'border-primary/50 bg-primary/15 text-foreground'
-                : 'border-border text-muted hover:border-border-strong hover:text-foreground',
-            )}
-          >
-            {entry.label}
-          </button>
-        ))}
-      </div>
-
-      <div
-        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
-        role="tablist"
-        aria-label="Time period"
-      >
-        {WINDOWS.map((entry) => (
-          <button
-            key={entry.key}
-            type="button"
-            role="tab"
-            aria-selected={window === entry.key}
-            onClick={() => onWindowChange(entry.key)}
-            className={cn(
-              'shrink-0 rounded-md px-3 py-1 text-sm transition-colors',
-              window === entry.key
-                ? 'bg-surface-raised font-medium text-foreground'
-                : 'text-muted hover:text-foreground',
-            )}
-          >
-            {entry.label}
-          </button>
-        ))}
-      </div>
+    <div className="space-y-2">
+      <FilterChips
+        label="Who is ranked"
+        value={scope}
+        onChange={onScopeChange}
+        options={scopes.map((entry) => ({ value: entry.key, label: entry.label }))}
+      />
+      <FilterChips
+        label="Time period"
+        variant="quiet"
+        value={window}
+        onChange={onWindowChange}
+        options={WINDOWS.map((entry) => ({ value: entry.key, label: entry.label }))}
+      />
     </div>
   );
 }

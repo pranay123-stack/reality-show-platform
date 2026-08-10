@@ -1,7 +1,7 @@
 'use client';
 
 import type { CommunityView } from '@reality/shared';
-import { Badge, Button, EmptyState, LoadingState, cn } from '@reality/ui';
+import { Badge, Button, EmptyState, FilterChips, LoadingState } from '@reality/ui';
 import { Lock, Users } from 'lucide-react';
 
 import { useCommunities, useJoinCommunity } from '@/hooks/use-leaderboard';
@@ -37,31 +37,19 @@ export function CommunitySelector({ selectedId, onSelect }: CommunitySelectorPro
 
   return (
     <div className="space-y-3">
-      <div
-        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
-        role="tablist"
-        aria-label="Communities"
-      >
-        {communities.map((community) => (
-          <button
-            key={community.id}
-            type="button"
-            role="tab"
-            aria-selected={selectedId === community.id}
-            onClick={() => onSelect(community.id)}
-            className={cn(
-              'flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors',
-              selectedId === community.id
-                ? 'border-primary/50 bg-primary/15 text-foreground'
-                : 'border-border text-muted hover:border-border-strong hover:text-foreground',
-            )}
-          >
-            {community.isPrivate && <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />}
-            <span className="max-w-[12rem] truncate">{community.name}</span>
-            <span className="text-xs tabular-nums opacity-70">{community.memberCount}</span>
-          </button>
-        ))}
-      </div>
+      <FilterChips
+        label="Communities"
+        value={selectedId ?? ''}
+        onChange={onSelect}
+        options={communities.map((community) => ({
+          value: community.id,
+          label: community.name,
+          count: community.memberCount,
+          icon: community.isPrivate ? (
+            <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          ) : undefined,
+        }))}
+      />
 
       <SelectedCommunityBar
         community={communities.find((entry) => entry.id === selectedId) ?? null}

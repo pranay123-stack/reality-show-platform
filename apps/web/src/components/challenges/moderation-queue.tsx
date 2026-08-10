@@ -8,6 +8,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  PageHeader,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -41,24 +42,22 @@ export function ModerationQueue() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-display-md font-semibold">Challenge moderation</h1>
-          <p className="text-muted">
-            Nothing reaches community voting until a human approves it.
-          </p>
-        </div>
-
-        <Tabs
-          value={reportedOnly ? 'reported' : 'queue'}
-          onValueChange={(value) => setReportedOnly(value === 'reported')}
-        >
-          <TabsList>
-            <TabsTrigger value="queue">Awaiting review</TabsTrigger>
-            <TabsTrigger value="reported">Reported</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </header>
+      <PageHeader
+        size="compact"
+        title="Challenge moderation"
+        description="Nothing reaches community voting until a human approves it."
+        action={
+          <Tabs
+            value={reportedOnly ? 'reported' : 'queue'}
+            onValueChange={(value) => setReportedOnly(value === 'reported')}
+          >
+            <TabsList>
+              <TabsTrigger value="queue">Awaiting review</TabsTrigger>
+              <TabsTrigger value="reported">Reported</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        }
+      />
 
       {isLoading && <LoadingState rows={3} />}
       {isError && <ErrorState onRetry={() => void refetch()} />}

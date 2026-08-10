@@ -28,16 +28,30 @@ export interface AlertProps
     VariantProps<typeof alertVariants> {
   title?: string;
   children?: ReactNode;
+  /**
+   * Announce this the moment it appears.
+   *
+   * Off by default, because most alerts on this platform are standing
+   * explanation — "confirm your email to take part", "this board is frozen" —
+   * that a screen reader already reaches in document order. Marking those as
+   * live regions made every page open with two or three competing
+   * announcements, and drowned out the one that mattered: "Loading…".
+   *
+   * `danger` opts in on its own: an error is nearly always the consequence of
+   * something the reader just did, and waiting for them to find it is worse
+   * than interrupting.
+   */
+  live?: boolean;
 }
 
-export function Alert({ tone = 'info', title, children, className, ...props }: AlertProps) {
+export function Alert({ tone = 'info', title, children, className, live, ...props }: AlertProps) {
   const Icon = icons[tone ?? 'info'];
+  const announce = live ?? tone === 'danger';
 
   return (
     <div
       className={cn(alertVariants({ tone }), className)}
-      // Errors interrupt; everything else waits for a pause in the output.
-      role={tone === 'danger' ? 'alert' : 'status'}
+      role={announce ? (tone === 'danger' ? 'alert' : 'status') : undefined}
       {...props}
     >
       <Icon

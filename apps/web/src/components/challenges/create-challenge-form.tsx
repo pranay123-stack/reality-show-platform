@@ -76,7 +76,7 @@ export function CreateChallengeForm() {
     <div className="mx-auto max-w-2xl space-y-6">
       <Link
         href="/challenges"
-        className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
+        className="inline-flex min-h-6 items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden />
         All challenges
@@ -84,7 +84,7 @@ export function CreateChallengeForm() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Write a challenge</CardTitle>
+          <CardTitle as="h1" className="text-2xl">Write a challenge</CardTitle>
           <CardDescription>
             Every challenge is read by a moderator before the community sees it. Keep it safe,
             achievable and about the show.

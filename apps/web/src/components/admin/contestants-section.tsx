@@ -6,11 +6,13 @@ import {
   Avatar,
   Button,
   Card,
+  cn,
+  ConfirmDialog,
   ErrorState,
   FormField,
   Input,
+  StatusBadge,
   Textarea,
-  cn,
 } from '@reality/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Flame, Plus } from 'lucide-react';
@@ -18,7 +20,6 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { DataTable, type Column } from '@/components/admin/data-table';
-import { ActionDialog, StatusBadge } from '@/components/admin/primitives';
 import { SectionHeader, useAdminMutation } from '@/components/admin/section-header';
 import { ApiError, api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
@@ -184,7 +185,7 @@ export function ContestantsSection() {
       {creating && <ContestantForm onClose={() => setCreating(false)} />}
       {editing && <ContestantForm contestant={editing} onClose={() => setEditing(null)} />}
 
-      <ActionDialog
+      <ConfirmDialog
         open={statusTarget !== null}
         title={`Mark ${statusTarget?.contestant.displayName ?? ''} as ${statusTarget?.status.toLowerCase() ?? ''}?`}
         description={
@@ -319,7 +320,7 @@ function ContestantForm({
   const ready = form.displayName.trim().length >= 2 && (editing || /^[a-z0-9-]{2,}$/.test(form.slug));
 
   return (
-    <ActionDialog
+    <ConfirmDialog
       open
       title={editing ? `Edit ${contestant!.displayName}` : 'Add a contestant'}
       confirmLabel={editing ? 'Save changes' : 'Add contestant'}
@@ -405,6 +406,6 @@ function ContestantForm({
           </p>
         </Card>
       </div>
-    </ActionDialog>
+    </ConfirmDialog>
   );
 }

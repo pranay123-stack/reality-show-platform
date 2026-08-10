@@ -6,6 +6,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  PageHeader,
   PredictionCard,
   Tabs,
   TabsList,
@@ -61,22 +62,19 @@ export function PredictionsScreen() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-display-md font-semibold">Prediction Game</h1>
-          <p className="text-muted">
-            Call what happens next. One prediction per question, locked once you submit.
-          </p>
-        </div>
-
-        <Tabs value={scope} onValueChange={(value) => setScope(value as Scope)}>
-          <TabsList>
-            <TabsTrigger value="open">Open</TabsTrigger>
-            <TabsTrigger value="mine">Mine</TabsTrigger>
-            <TabsTrigger value="resolved">Resolved</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </header>
+      <PageHeader
+        title="Prediction Game"
+        description="Call what happens next. One prediction per question, locked once you submit."
+        action={
+          <Tabs value={scope} onValueChange={(value) => setScope(value as Scope)}>
+            <TabsList>
+              <TabsTrigger value="open">Open</TabsTrigger>
+              <TabsTrigger value="mine">Mine</TabsTrigger>
+              <TabsTrigger value="resolved">Resolved</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        }
+      />
 
       {!canParticipate && (
         <Alert tone="warning" title="Confirm your email to predict">

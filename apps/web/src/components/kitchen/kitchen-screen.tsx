@@ -1,6 +1,15 @@
 'use client';
 
-import { Alert, EmptyState, ErrorState, LoadingState, Tabs, TabsList, TabsTrigger } from '@reality/ui';
+import {
+  Alert,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  PageHeader,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from '@reality/ui';
 import { useState } from 'react';
 
 import { KitchenDecisionCard } from '@/components/kitchen/kitchen-decision-card';
@@ -15,21 +24,18 @@ export function KitchenScreen() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-display-md font-semibold">Kitchen Control</h1>
-          <p className="text-muted">
-            Help decide what the house eats — within the budget production has set.
-          </p>
-        </div>
-
-        <Tabs value={scope} onValueChange={(value) => setScope(value as KitchenScope)}>
-          <TabsList>
-            <TabsTrigger value="open">Open now</TabsTrigger>
-            <TabsTrigger value="finalized">Decided</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </header>
+      <PageHeader
+        title="Kitchen Control"
+        description="Help decide what the house eats — within the budget production has set."
+        action={
+          <Tabs value={scope} onValueChange={(value) => setScope(value as KitchenScope)}>
+            <TabsList>
+              <TabsTrigger value="open">Open now</TabsTrigger>
+              <TabsTrigger value="finalized">Decided</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        }
+      />
 
       <Alert tone="info" title="You choose the food, not the budget">
         The house budget is set by production. You can influence what it is spent on; what the house

@@ -7,11 +7,12 @@ import {
   Card,
   EmptyState,
   ErrorState,
+  FilterChips,
   LoadingState,
+  PageHeader,
   Tabs,
   TabsList,
   TabsTrigger,
-  cn,
 } from '@reality/ui';
 import { Bell, CheckCheck } from 'lucide-react';
 import { useState } from 'react';
@@ -29,21 +30,18 @@ export function NotificationPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
-          <p className="text-sm text-muted">
-            What happened while you were away, and what you want to hear about.
-          </p>
-        </div>
-
-        <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
-          <TabsList>
-            <TabsTrigger value="inbox">Inbox</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </header>
+      <PageHeader
+        title="Notifications"
+        description="What happened while you were away, and what you want to hear about."
+        action={
+          <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
+            <TabsList>
+              <TabsTrigger value="inbox">Inbox</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        }
+      />
 
       {tab === 'inbox' ? <Inbox /> : <PreferenceSettings />}
     </div>
@@ -64,27 +62,15 @@ function Inbox() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2">
-          {[
-            { key: false, label: 'All' },
-            { key: true, label: `Unread${unread > 0 ? ` (${unread})` : ''}` },
-          ].map((option) => (
-            <button
-              key={String(option.key)}
-              type="button"
-              aria-pressed={unreadOnly === option.key}
-              onClick={() => setUnreadOnly(option.key)}
-              className={cn(
-                'rounded-full border px-3 py-1.5 text-sm transition-colors',
-                unreadOnly === option.key
-                  ? 'border-primary/50 bg-primary/15 text-foreground'
-                  : 'border-border text-muted hover:border-border-strong hover:text-foreground',
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <FilterChips
+          label="Filter notifications"
+          value={unreadOnly ? 'unread' : 'all'}
+          onChange={(next) => setUnreadOnly(next === 'unread')}
+          options={[
+            { value: 'all', label: 'All' },
+            { value: 'unread', label: 'Unread', count: unread > 0 ? unread : undefined },
+          ]}
+        />
 
         {unread > 0 && (
           <Button

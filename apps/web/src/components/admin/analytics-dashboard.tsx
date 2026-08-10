@@ -1,7 +1,15 @@
 'use client';
 
 import type { AnalyticsOverviewView } from '@reality/shared';
-import { Alert, Badge, Button, Card, ErrorState, LoadingState, cn } from '@reality/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  ErrorState,
+  FilterChips,
+  LoadingState,
+  SectionCard,
+} from '@reality/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Flame, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
@@ -105,24 +113,12 @@ export function AnalyticsDashboard() {
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          {RANGES.map((range) => (
-            <button
-              key={range}
-              type="button"
-              aria-pressed={days === range}
-              onClick={() => setDays(range)}
-              className={cn(
-                'shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors',
-                days === range
-                  ? 'border-primary/50 bg-primary/15 text-foreground'
-                  : 'border-border text-muted hover:border-border-strong hover:text-foreground',
-              )}
-            >
-              {range} days
-            </button>
-          ))}
-        </div>
+        <FilterChips
+          label="Reporting range"
+          value={String(days)}
+          onChange={(next) => setDays(Number(next))}
+          options={RANGES.map((range) => ({ value: String(range), label: `${range} days` }))}
+        />
 
         <p className="text-xs text-muted">
           {data.asOf ? `Aggregated to ${data.asOf}` : 'No aggregation has run yet'}
@@ -168,11 +164,15 @@ export function AnalyticsDashboard() {
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="space-y-3 p-5">
-          <h2 className="flex items-center gap-2 text-sm font-medium">
-            <Flame className="h-4 w-4 text-heat-3" aria-hidden />
-            Contestant attention
-          </h2>
+        <SectionCard
+          bodyClassName="space-y-3"
+          title={
+            <>
+              <Flame className="h-4 w-4 text-heat-3" aria-hidden />
+              Contestant attention
+            </>
+          }
+        >
 
           {data.contestantTrends.length === 0 ? (
             <p className="text-sm text-muted">No contestant views recorded in this window.</p>
@@ -203,7 +203,7 @@ export function AnalyticsDashboard() {
             Views are attention; heat is the measured score. They are not the same thing and can
             disagree.
           </p>
-        </Card>
+        </SectionCard>
 
         {/*
           `min-w-0` is load-bearing: a grid item defaults to `min-width: auto`,

@@ -21,17 +21,27 @@ export const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEleme
   },
 );
 
-export const CardTitle = forwardRef<HTMLHeadingElement, HTMLAttributes<HTMLHeadingElement>>(
-  function CardTitle({ className, ...props }, ref) {
-    return (
-      <h3
-        ref={ref}
-        className={cn('text-lg font-semibold leading-tight tracking-tight', className)}
-        {...props}
-      />
-    );
-  },
-);
+export interface CardTitleProps extends HTMLAttributes<HTMLHeadingElement> {
+  /**
+   * The heading level. `h3` suits a card sitting inside a titled section, but a
+   * card that *is* the page — the sign-in form, for one — needs to own the `h1`
+   * or the document outline starts at level three with nothing above it.
+   */
+  as?: 'h1' | 'h2' | 'h3' | 'h4';
+}
+
+export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(function CardTitle(
+  { className, as: Heading = 'h3', ...props },
+  ref,
+) {
+  return (
+    <Heading
+      ref={ref}
+      className={cn('text-lg font-semibold leading-tight tracking-tight', className)}
+      {...props}
+    />
+  );
+});
 
 export const CardDescription = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLParagraphElement>>(
   function CardDescription({ className, ...props }, ref) {

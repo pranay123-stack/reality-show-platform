@@ -11,6 +11,7 @@ import {
   ErrorState,
   LoadingState,
   OptionResult,
+  PageHeader,
   StatCard,
   Tabs,
   TabsList,
@@ -59,22 +60,19 @@ export function PerspectivesScreen() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-display-md font-semibold">Audience Perspective</h1>
-          <p className="text-muted">
-            Say what you think about something that already happened in the house.
-          </p>
-        </div>
-
-        <Tabs value={scope} onValueChange={(value) => setScope(value as Scope)}>
-          <TabsList>
-            <TabsTrigger value="open">Open</TabsTrigger>
-            <TabsTrigger value="closed">Past</TabsTrigger>
-            <TabsTrigger value="mine">Mine</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </header>
+      <PageHeader
+        title="Audience Perspective"
+        description="Say what you think about something that already happened in the house."
+        action={
+          <Tabs value={scope} onValueChange={(value) => setScope(value as Scope)}>
+            <TabsList>
+              <TabsTrigger value="open">Open</TabsTrigger>
+              <TabsTrigger value="closed">Past</TabsTrigger>
+              <TabsTrigger value="mine">Mine</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        }
+      />
 
       <Alert tone="info">
         This is not a live poll. Live polls decide something happening <em>now</em>; a perspective
@@ -154,7 +152,7 @@ function PerspectiveCard({
               <Link
                 key={contestant.id}
                 href={`/contestants/${contestant.id}`}
-                className="text-xs text-primary underline-offset-4 hover:underline"
+                className="inline-flex h-8 items-center rounded-full border border-border px-2.5 text-xs text-primary transition-colors hover:border-border-strong"
               >
                 {contestant.displayName}
               </Link>
@@ -260,7 +258,7 @@ function AnalyticsPanel() {
                 <div className="flex items-center justify-between gap-3 text-sm">
                   <Link
                     href={`/contestants/${entry.contestantId}`}
-                    className="underline-offset-4 hover:underline"
+                    className="inline-flex min-h-9 items-center underline-offset-4 hover:underline"
                   >
                     {entry.displayName}
                   </Link>

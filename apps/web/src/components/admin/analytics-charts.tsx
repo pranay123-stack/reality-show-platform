@@ -1,7 +1,7 @@
 'use client';
 
 import type { FeatureUsage, FunnelStep, MetricSummary, TrendPoint } from '@reality/shared';
-import { Card, cn } from '@reality/ui';
+import { Card, cn, SectionCard } from '@reality/ui';
 import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
 
 /**
@@ -111,12 +111,11 @@ export function TrendChart({
   } as const;
 
   return (
-    <Card className="space-y-3 p-5">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="space-y-0.5">
-          <h2 className="text-sm font-medium">{title}</h2>
-          {description && <p className="text-xs text-muted">{description}</p>}
-        </div>
+    <SectionCard
+      title={title}
+      description={description}
+      bodyClassName="space-y-3"
+      action={
         <ul className="flex flex-wrap gap-3">
           {series.map((line) => (
             <li key={line.label} className="flex items-center gap-1.5 text-xs text-muted">
@@ -125,7 +124,8 @@ export function TrendChart({
             </li>
           ))}
         </ul>
-      </div>
+      }
+    >
 
       {/* The bars scroll inside the card rather than widening the page. */}
       <div className="overflow-x-auto">
@@ -182,7 +182,7 @@ export function TrendChart({
           </tbody>
         </table>
       </div>
-    </Card>
+    </SectionCard>
   );
 }
 
@@ -195,13 +195,10 @@ export function TrendChart({
  */
 export function FunnelChart({ steps }: { steps: FunnelStep[] }) {
   return (
-    <Card className="space-y-3 p-5">
-      <div className="space-y-0.5">
-        <h2 className="text-sm font-medium">Engagement funnel</h2>
-        <p className="text-xs text-muted">
-          Distinct people at each depth of involvement, over the selected window.
-        </p>
-      </div>
+    <SectionCard
+      title="Engagement funnel"
+      description="Distinct people at each depth of involvement, over the selected window."
+    >
 
       {steps.every((step) => step.users === 0) ? (
         <p className="text-sm text-muted">No activity in this window yet.</p>
@@ -235,7 +232,7 @@ export function FunnelChart({ steps }: { steps: FunnelStep[] }) {
           ))}
         </ol>
       )}
-    </Card>
+    </SectionCard>
   );
 }
 
@@ -243,13 +240,10 @@ export function FeatureUsageChart({ features }: { features: FeatureUsage[] }) {
   const max = Math.max(1, ...features.map((feature) => feature.users));
 
   return (
-    <Card className="space-y-3 p-5">
-      <div className="space-y-0.5">
-        <h2 className="text-sm font-medium">Feature adoption</h2>
-        <p className="text-xs text-muted">
-          Share of monthly actives who used each feature in the window.
-        </p>
-      </div>
+    <SectionCard
+      title="Feature adoption"
+      description="Share of monthly actives who used each feature in the window."
+    >
 
       {features.every((feature) => feature.users === 0) ? (
         <p className="text-sm text-muted">Nothing has been used in this window yet.</p>
@@ -274,6 +268,6 @@ export function FeatureUsageChart({ features }: { features: FeatureUsage[] }) {
           ))}
         </ul>
       )}
-    </Card>
+    </SectionCard>
   );
 }

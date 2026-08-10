@@ -48,7 +48,7 @@ export function LoginForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">Welcome back</CardTitle>
+        <CardTitle as="h1" className="text-2xl">Welcome back</CardTitle>
         <p className="text-sm text-muted">Sign in to keep playing along with the show.</p>
       </CardHeader>
 
@@ -99,7 +99,7 @@ export function LoginForm() {
 
             <Link
               href="/forgot-password"
-              className="text-sm text-primary underline-offset-4 hover:underline"
+              className="inline-flex min-h-6 items-center text-sm text-primary underline-offset-4 hover:underline"
             >
               Forgot password?
             </Link>

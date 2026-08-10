@@ -12,10 +12,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       <header className="relative border-b border-border/60">
         <div className="container flex h-16 items-center justify-between">
-          <Link href="/" className="text-sm font-semibold tracking-tight">
+          <Link href="/" className="inline-flex min-h-6 items-center text-sm font-semibold tracking-tight">
             {env.appName}
           </Link>
-          <Link href="/" className="text-sm text-muted transition-colors hover:text-foreground">
+          <Link
+            href="/"
+            className="inline-flex min-h-6 items-center text-sm text-muted transition-colors hover:text-foreground"
+          >
             Back to home
           </Link>
         </div>

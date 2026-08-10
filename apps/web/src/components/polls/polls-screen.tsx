@@ -9,6 +9,7 @@ import {
   ErrorState,
   LoadingState,
   OptionResult,
+  PageHeader,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -44,21 +45,18 @@ export function PollsScreen() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-display-md font-semibold">Live Polls</h1>
-          <p className="text-muted">
-            Vote while the episode is on air. Counts come from the server, never from your browser.
-          </p>
-        </div>
-
-        <Tabs value={scope} onValueChange={(value) => setScope(value as Scope)}>
-          <TabsList>
-            <TabsTrigger value="active">Live now</TabsTrigger>
-            <TabsTrigger value="past">Results</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </header>
+      <PageHeader
+        title="Live Polls"
+        description="Vote while the episode is on air. Counts come from the server, never from your browser."
+        action={
+          <Tabs value={scope} onValueChange={(value) => setScope(value as Scope)}>
+            <TabsList>
+              <TabsTrigger value="active">Live now</TabsTrigger>
+              <TabsTrigger value="past">Results</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        }
+      />
 
       {!canParticipate && (
         <Alert tone="warning" title="Confirm your email to vote">

@@ -1,13 +1,17 @@
 'use client';
 
 import type { OverviewCard } from '@reality/shared';
-import { Badge, Button, Card, Modal, ModalClose, ModalContent, cn, type BadgeProps } from '@reality/ui';
+import { Card, cn, FilterChips, type BadgeProps } from '@reality/ui';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 /**
- * Small shared pieces for the console: summary cards, a filter bar, a
- * confirmation dialog, and two chart shapes that need no charting library.
+ * Small shared pieces for the console: summary cards, a filter bar, and two
+ * chart shapes that need no charting library.
+ *
+ * The confirmation dialog and the status chip used to live here too. They are
+ * not console-specific — the audience side wants both — so they moved to
+ * `@reality/ui` as `ConfirmDialog` and `StatusBadge`.
  */
 
 // ---------------------------------------------------------------------------
@@ -120,6 +124,7 @@ export function SelectFilter({
   );
 }
 
+/** Kept as a named console export; the behaviour now lives in `FilterChips`. */
 export function StatusPills<T extends string>({
   value,
   options,
@@ -131,98 +136,12 @@ export function StatusPills<T extends string>({
   onChange: (value: T) => void;
   label: string;
 }) {
-  return (
-    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label={label}>
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          role="tab"
-          aria-selected={value === option.value}
-          onClick={() => onChange(option.value)}
-          className={cn(
-            'shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors',
-            value === option.value
-              ? 'border-primary/50 bg-primary/15 text-foreground'
-              : 'border-border text-muted hover:border-border-strong hover:text-foreground',
-          )}
-        >
-          {option.label}
-          {option.count !== undefined && (
-            <span className="ml-1.5 text-xs tabular-nums opacity-70">{option.count}</span>
-          )}
-        </button>
-      ))}
-    </div>
-  );
+  return <FilterChips label={label} value={value} options={options} onChange={onChange} />;
 }
 
 // ---------------------------------------------------------------------------
 // Action dialog
 // ---------------------------------------------------------------------------
-
-export interface ActionDialogProps {
-  open: boolean;
-  title: string;
-  description?: string;
-  confirmLabel: string;
-  /** Irreversible actions get the danger treatment. */
-  destructive?: boolean;
-  pending?: boolean;
-  disabled?: boolean;
-  onConfirm: () => void;
-  onClose: () => void;
-  children?: ReactNode;
-}
-
-/**
- * Confirmation for an operator action.
- *
- * Used for anything a live show cannot take back — closing a poll, resolving a
- * prediction, evicting a contestant. The friction is the point.
- */
-export function ActionDialog({
-  open,
-  title,
-  description,
-  confirmLabel,
-  destructive,
-  pending,
-  disabled,
-  onConfirm,
-  onClose,
-  children,
-}: ActionDialogProps) {
-  if (!open) return null;
-
-  return (
-    <Modal open onOpenChange={(next) => !next && onClose()}>
-      <ModalContent
-        title={title}
-        description={description}
-        footer={
-          <>
-            <ModalClose asChild>
-              <Button variant="ghost" disabled={pending}>
-                Cancel
-              </Button>
-            </ModalClose>
-            <Button
-              variant={destructive ? 'danger' : 'primary'}
-              loading={pending}
-              disabled={disabled}
-              onClick={onConfirm}
-            >
-              {confirmLabel}
-            </Button>
-          </>
-        }
-      >
-        {children}
-      </ModalContent>
-    </Modal>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Charts
@@ -308,23 +227,5 @@ export function DistributionBar({
         ))}
       </ul>
     </div>
-  );
-}
-
-/** Status chip with the tone mapping the console uses everywhere. */
-export function StatusBadge({ status }: { status: string }) {
-  const tone: BadgeProps['tone'] =
-    /ACTIVE|OPEN|APPROVED|SELECTED|LIVE|AVAILABLE|FULFILLED|PROCESSED|SENT|WINNER/.test(status)
-      ? 'success'
-      : /PENDING|MODERATION|SUBMITTED|RESERVED|DRAFT|SCHEDULED|PAUSED|SHORTLIST/.test(status)
-        ? 'warning'
-        : /REJECTED|CANCELLED|FAILED|EVICTED|RETIRED|EXPIRED/.test(status)
-          ? 'danger'
-          : 'neutral';
-
-  return (
-    <Badge tone={tone} size="sm">
-      {status.replace(/_/g, ' ').toLowerCase()}
-    </Badge>
   );
 }

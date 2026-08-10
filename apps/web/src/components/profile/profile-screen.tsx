@@ -17,6 +17,8 @@ import {
   CardTitle,
   FormField,
   Input,
+  LoadingState,
+  PageHeader,
   Textarea,
 } from '@reality/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -38,7 +40,7 @@ export function ProfileScreen() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="surface-card h-64 animate-pulse" />;
+    return <LoadingState rows={3} label="Loading your profile…" />;
   }
 
   if (!user) {
@@ -51,10 +53,10 @@ export function ProfileScreen() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-display-md font-semibold">Your profile</h1>
-        <p className="text-muted">Manage how you appear and keep your account secure.</p>
-      </header>
+      <PageHeader
+        title="Your profile"
+        description="Manage how you appear and keep your account secure."
+      />
 
       {!user.emailVerified && (
         <Alert tone="warning" title="Confirm your email to take part">

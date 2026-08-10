@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, LoadingState, cn } from '@reality/ui';
+import { Alert, chipClassName, cn, LoadingState } from '@reality/ui';
 import { useQuery } from '@tanstack/react-query';
 import {
   BarChart3,
@@ -137,12 +137,7 @@ function AdminNav({ sections, role }: { sections: Section[]; role: string }) {
             key={section.key}
             href={section.href}
             aria-current={isActive(section.href) ? 'page' : undefined}
-            className={cn(
-              'flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors',
-              isActive(section.href)
-                ? 'border-primary/50 bg-primary/15 text-foreground'
-                : 'border-border text-muted hover:border-border-strong hover:text-foreground',
-            )}
+            className={chipClassName(isActive(section.href))}
           >
             <section.icon className="h-4 w-4 shrink-0" aria-hidden />
             {section.label}

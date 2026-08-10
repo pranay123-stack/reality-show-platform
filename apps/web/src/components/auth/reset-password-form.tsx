@@ -41,7 +41,7 @@ export function ResetPasswordForm() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Link not valid</CardTitle>
+          <CardTitle as="h1" className="text-2xl">Link not valid</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert tone="danger" title="This reset link is missing its token.">
@@ -58,7 +58,7 @@ export function ResetPasswordForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">Choose a new password</CardTitle>
+        <CardTitle as="h1" className="text-2xl">Choose a new password</CardTitle>
         <p className="text-sm text-muted">
           Setting a new password signs you out everywhere else.
         </p>

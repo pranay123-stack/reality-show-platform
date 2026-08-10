@@ -11,6 +11,7 @@ import {
   Badge,
   Button,
   Card,
+  cn,
   EmptyState,
   ErrorState,
   FormField,
@@ -19,11 +20,11 @@ import {
   Modal,
   ModalClose,
   ModalContent,
+  PageHeader,
   Tabs,
   TabsList,
   TabsTrigger,
   Textarea,
-  cn,
   type BadgeProps,
 } from '@reality/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -74,21 +75,19 @@ export function RewardAdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-display-md font-semibold">Reward administration</h1>
-          <p className="text-muted">
-            The catalogue, its stock, and every redemption waiting on a human.
-          </p>
-        </div>
-
-        <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
-          <TabsList>
-            <TabsTrigger value="catalogue">Catalogue</TabsTrigger>
-            <TabsTrigger value="queue">Redemptions</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </header>
+      <PageHeader
+        size="compact"
+        title="Reward administration"
+        description="The catalogue, its stock, and every redemption waiting on a human."
+        action={
+          <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)}>
+            <TabsList>
+              <TabsTrigger value="catalogue">Catalogue</TabsTrigger>
+              <TabsTrigger value="queue">Redemptions</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        }
+      />
 
       {!can('reward.manage') && (
         <Alert tone="info" title="Read only">

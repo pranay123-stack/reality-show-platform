@@ -9,6 +9,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  PageHeader,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -35,22 +36,18 @@ export function ChallengesScreen() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-display-md font-semibold">Audience Challenges</h1>
-          <p className="text-muted">
-            Write a task for the house. The community votes, moderators check it, producers decide
-            what actually runs.
-          </p>
-        </div>
-
-        <Button asChild disabled={!canParticipate}>
-          <Link href="/challenges/new">
-            <Plus className="h-4 w-4" aria-hidden />
-            Write a challenge
-          </Link>
-        </Button>
-      </header>
+      <PageHeader
+        title="Audience Challenges"
+        description="Write a task for the house. The community votes, moderators check it, producers decide what actually runs."
+        action={
+          <Button asChild disabled={!canParticipate}>
+            <Link href="/challenges/new">
+              <Plus className="h-4 w-4" aria-hidden />
+              Write a challenge
+            </Link>
+          </Button>
+        }
+      />
 
       {!canParticipate && (
         <Alert tone="warning" title="Confirm your email to take part">

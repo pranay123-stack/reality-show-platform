@@ -1,14 +1,24 @@
 'use client';
 
 import type { KitchenDecisionView } from '@reality/shared';
-import { Alert, Button, Card, ErrorState, FormField, Input, Textarea } from '@reality/ui';
+import {
+  Alert,
+  Button,
+  Card,
+  ConfirmDialog,
+  ErrorState,
+  FormField,
+  Input,
+  StatusBadge,
+  Textarea,
+} from '@reality/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { DataTable, type Column } from '@/components/admin/data-table';
-import { ActionDialog, DistributionBar, StatusBadge } from '@/components/admin/primitives';
+import { DistributionBar } from '@/components/admin/primitives';
 import { SectionHeader, useAdminMutation } from '@/components/admin/section-header';
 import { ApiError, api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
@@ -154,7 +164,7 @@ export function KitchenSection() {
       {creating && <DecisionForm scopeKey={key} onClose={() => setCreating(false)} />}
       {budgeting && <BudgetForm scopeKey={key} onClose={() => setBudgeting(false)} />}
 
-      <ActionDialog
+      <ConfirmDialog
         open={pending !== null}
         title={`${pending?.label ?? ''}?`}
         description={pending?.decision.title}
@@ -170,7 +180,7 @@ export function KitchenSection() {
         }}
       >
         {pending?.note && <p className="text-sm text-muted">{pending.note}</p>}
-      </ActionDialog>
+      </ConfirmDialog>
     </div>
   );
 }
@@ -273,7 +283,7 @@ function DecisionForm({ scopeKey, onClose }: { scopeKey: readonly unknown[]; onC
     form.title.trim().length >= 3 && options.filter((option) => option.label.trim()).length >= 2;
 
   return (
-    <ActionDialog
+    <ConfirmDialog
       open
       title="New kitchen decision"
       confirmLabel="Create draft"
@@ -397,7 +407,7 @@ function DecisionForm({ scopeKey, onClose }: { scopeKey: readonly unknown[]; onC
           )}
         </fieldset>
       </div>
-    </ActionDialog>
+    </ConfirmDialog>
   );
 }
 
@@ -419,7 +429,7 @@ function BudgetForm({ scopeKey, onClose }: { scopeKey: readonly unknown[]; onClo
   });
 
   return (
-    <ActionDialog
+    <ConfirmDialog
       open
       title="Set the kitchen budget"
       description="Options cost units. The budget is only spent when production implements a result."
@@ -449,6 +459,6 @@ function BudgetForm({ scopeKey, onClose }: { scopeKey: readonly unknown[]; onClo
           </p>
         </Card>
       </div>
-    </ActionDialog>
+    </ConfirmDialog>
   );
 }

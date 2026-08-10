@@ -1,7 +1,16 @@
 'use client';
 
 import type { LeaderboardScope, LeaderboardWindow } from '@reality/shared';
-import { Alert, Badge, Button, Card, ErrorState, LoadingState } from '@reality/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  ErrorState,
+  LoadingState,
+  PageHeader,
+  SectionCard,
+} from '@reality/ui';
 import { Check, Clock, Snowflake, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -44,13 +53,10 @@ export function LeaderboardScreen() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Leaderboard</h1>
-        <p className="text-sm text-muted">
-          Ranked on points earned by taking part. Spending points on rewards never costs you a
-          place.
-        </p>
-      </header>
+      <PageHeader
+        title="Leaderboard"
+        description="Ranked on points earned by taking part. Spending points on rewards never costs you a place."
+      />
 
       {isAuthenticated && <FriendRequests />}
 
@@ -180,11 +186,15 @@ function FriendRequests() {
   if (pending.length === 0) return null;
 
   return (
-    <Card className="space-y-3 p-4">
-      <h2 className="flex items-center gap-2 text-sm font-medium">
-        <UserPlus className="h-4 w-4 text-primary" aria-hidden />
-        Friend {pending.length === 1 ? 'request' : 'requests'}
-      </h2>
+    <SectionCard
+      className="p-4"
+      title={
+        <>
+          <UserPlus className="h-4 w-4 text-primary" aria-hidden />
+          Friend {pending.length === 1 ? 'request' : 'requests'}
+        </>
+      }
+    >
 
       <ul className="space-y-2">
         {pending.map((connection) => (
@@ -215,6 +225,6 @@ function FriendRequests() {
           </li>
         ))}
       </ul>
-    </Card>
+    </SectionCard>
   );
 }

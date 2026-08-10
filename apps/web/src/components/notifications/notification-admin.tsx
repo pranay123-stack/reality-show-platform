@@ -6,13 +6,16 @@ import {
   Badge,
   Button,
   Card,
+  cn,
   EmptyState,
   ErrorState,
+  FilterChips,
   FormField,
   Input,
   LoadingState,
+  PageHeader,
+  SectionCard,
   Textarea,
-  cn,
 } from '@reality/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Megaphone, RefreshCw } from 'lucide-react';
@@ -71,33 +74,23 @@ export function NotificationAdmin() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-display-md font-semibold">Notification health</h1>
-          <p className="text-muted">
-            Events recorded, notifications produced, and anything that failed on the way out.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {[1, 24, 168].map((option) => (
-            <button
-              key={option}
-              type="button"
-              aria-pressed={hours === option}
-              onClick={() => setHours(option)}
-              className={cn(
-                'rounded-full border px-3 py-1.5 text-sm transition-colors',
-                hours === option
-                  ? 'border-primary/50 bg-primary/15 text-foreground'
-                  : 'border-border text-muted hover:border-border-strong hover:text-foreground',
-              )}
-            >
-              {option === 1 ? 'Last hour' : option === 24 ? 'Last day' : 'Last week'}
-            </button>
-          ))}
-        </div>
-      </header>
+      <PageHeader
+        size="compact"
+        title="Notification health"
+        description="Events recorded, notifications produced, and anything that failed on the way out."
+        action={
+          <FilterChips
+            label="Time window"
+            value={String(hours)}
+            onChange={(next) => setHours(Number(next))}
+            options={[
+              { value: '1', label: 'Last hour' },
+              { value: '24', label: 'Last day' },
+              { value: '168', label: 'Last week' },
+            ]}
+          />
+        }
+      />
 
       {health.isError ? (
         <ErrorState onRetry={() => void health.refetch()} />
@@ -116,8 +109,7 @@ export function NotificationAdmin() {
             <Stat label="Read by users" value={health.data.notifications.read} />
           </div>
 
-          <Card className="space-y-3 p-5">
-            <h2 className="text-sm font-medium">Channels</h2>
+          <SectionCard title="Channels">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[30rem] text-sm">
                 <thead>
@@ -157,12 +149,13 @@ export function NotificationAdmin() {
               “Skipped” is not a failure — it is a channel with no provider configured, or a
               recipient who muted that feature.
             </p>
-          </Card>
+          </SectionCard>
 
-          <Card className="space-y-3 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-medium">Failures</h2>
-              {can('notification.manage') && (
+          <SectionCard
+            title="Failures"
+            bodyClassName="space-y-3"
+            action={
+              can('notification.manage') && (
                 <Button
                   size="sm"
                   variant="secondary"
@@ -172,8 +165,9 @@ export function NotificationAdmin() {
                   <RefreshCw className="h-4 w-4" aria-hidden />
                   Retry everything failed
                 </Button>
-              )}
-            </div>
+              )
+            }
+          >
 
             {health.data.recentFailures.length === 0 && health.data.stuckEvents.length === 0 ? (
               <EmptyState
@@ -234,7 +228,7 @@ export function NotificationAdmin() {
                 ))}
               </ul>
             )}
-          </Card>
+          </SectionCard>
 
           {can('notification.announce') && <Announcer />}
         </>

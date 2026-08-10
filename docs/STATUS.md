@@ -1,6 +1,6 @@
 # Build status
 
-**Last updated:** end of Phase 19.
+**Last updated:** end of Phase 20.
 
 Everything below was executed and observed, not assumed. Per-phase detail is in
 [`PHASE_REPORTS.md`](PHASE_REPORTS.md); the design is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -13,16 +13,17 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | --- | --- | --- |
 | Typecheck | `pnpm typecheck` | 7/7 packages |
 | Lint | `pnpm lint` | 5/5 packages, 0 warnings |
-| Tests | `pnpm test` | **638 passed** (631 API across 30 files, 7 shared) |
+| Tests | `pnpm test` | **733 passed** (631 API across 30 files, 69 web, 26 ui, 7 shared) |
 | Build | `pnpm build` | 4/4 (API bundle + Next production build) |
 | Migrations | `prisma migrate deploy` | 9 migrations, applied cleanly, no drift |
 | Seed | `pnpm db:seed` | idempotent, completes |
 | Dependencies | `pnpm audit` | **no known vulnerabilities** |
 | Runtime | API + web started, flows exercised via curl and headless Chromium | see below |
+| UI audit | `node apps/web/scripts/audit-ui.mjs` against a **production** build | 96 page/viewport combinations · **0 px** overflow · every page owns exactly one `h1` · no target under 24 px · 0 JS errors |
 
 ---
 
-## Phases complete: 0 – 19
+## Phases complete: 0 – 20
 
 | Phase | Delivered |
 | --- | --- |
@@ -46,6 +47,8 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | **17** | Producer/Admin console at `/admin`: eleven sections over the endpoints that already existed, plus the three genuine gaps (contestant management, operator lists for predictions and polls, an audit reader). Sections resolve server-side from the caller's permissions — moderator 5, producer 10, admin 11, viewer refused. Audit trail filterable by module, action, actor, target and date, and provably read-only |
 | **18** | Security audit and hardening: eleven findings, each reproduced against a running stack and re-tested after the fix. Two high — a WebSocket that authorised once at handshake so a suspended account kept voting, and `z.string().url()` accepting `javascript:`. Plus socket rate limits, CSV formula injection, a rate limiter answering 500 instead of 429, per-account limit keys, a CSP, and dependencies to zero advisories. 40 security regression tests and [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) |
 | **19** | Analytics: `AnalyticsEvent` (raw log) → aggregation pass → `AnalyticsAggregate` + `AnalyticsSnapshot`, with dashboards reading only the latter two. Events arrive from the domain bus, from server-side instrumentation, and from a five-item client allow-list; anything with a consequence is recorded from the action. Opt-out records nothing and deletes history, and the dashboard states what share of the platform it describes |
+
+| **20** | UI/UX polish. Five shared components absorbed markup that had been rebuilt by hand — `PageHeader` (20 screens, two conflicting `h1` treatments), `SectionCard` (10 blocks), `FilterChips` (9 chip rows at three different heights and three different sets of ARIA semantics), plus `StatusBadge` and `ConfirmDialog` promoted out of the console. Then the defects those screens were hiding: **the production build never hydrated**, five auth pages had no `h1` at all, `FormField` never wired up the aria relationships its own comment claimed, and `Alert` made every standing explanation a live region. 95 UI regression tests added |
 
 ### Things worth knowing
 
@@ -106,15 +109,28 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 - **Do not run two test suites at once.** They truncate the same tables and destroy each other; a
   concurrent pair produced 63 phantom failures that a single clean run does not reproduce.
 - No 404 routes remain in the navigation.
+- **`next dev` and `next build` do not serve the same document.** A CSP of
+  `script-src 'self'` passes every check in development — dev keeps `'unsafe-inline'` for React
+  Refresh — and produces a completely inert production build, because the App Router bootstraps
+  through inline `<script>` tags. Verify UI work against `pnpm build && pnpm start`, not `pnpm dev`.
+- **A nonce cannot rescue that policy here.** A nonce must be unique per response and 30 routes are
+  statically prerendered, so nonces would mean giving up static rendering across the app.
+- **`FormField` injects `aria-describedby`, `aria-invalid` and `aria-required` into its child.**
+  Do not repeat them at the call site; do not render a control outside it and expect the error text
+  to be announced.
+- **`Alert` is not a live region by default.** Pass `live` for something that appears in response to
+  an action. Most alerts here are standing explanation that a reader already reaches in document
+  order, and marking them live meant three announcements competed on page load.
+- **Never run `node scripts/audit-ui.mjs` while `pnpm test` is running.** The API suite truncates
+  the database the demo accounts live in and every login in the audit fails.
 
 ---
 
-## Remaining: Phases 20 – 24
+## Remaining: Phases 21 – 24
 
 | Phase | Scope | Notes for whoever picks this up |
 | --- | --- | --- |
-| 20 | UI/UX polish | Loading/empty/error states already exist as components. |
-| 21 | Full test pass | Playwright is installed and Chromium is downloaded; `apps/web/scripts/verify-ui.mjs` is a working harness to build on. |
+| 21 | Full test pass | Playwright is installed and Chromium is downloaded. `apps/web/scripts/verify-ui.mjs` (one screen, screenshots) and `apps/web/scripts/audit-ui.mjs` (every screen, measurements) are working harnesses; neither is wired into `pnpm test` yet, and `test:e2e` still points at no spec files. |
 | 22 | Performance | |
 | 23 | Production Docker | `docker-compose.prod.yml` and Dockerfiles not started. |
 | 24 | Final audit + `FINAL_RELEASE_REPORT.md` | |

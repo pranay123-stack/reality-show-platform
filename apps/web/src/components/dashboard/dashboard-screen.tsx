@@ -7,15 +7,16 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  cn,
   Countdown,
   ErrorState,
   HeatBadge,
   LiveIndicator,
   LoadingState,
+  PageHeader,
   StatCard,
-  cn,
 } from '@reality/ui';
-import { Activity, Flame, Sparkles, Trophy } from 'lucide-react';
+import { Activity, ArrowRight, Flame, Sparkles, Trophy } from 'lucide-react';
 import Link from 'next/link';
 
 import { useDashboard, type DashboardSummary } from '@/hooks/use-dashboard';
@@ -47,12 +48,10 @@ export function DashboardScreen() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-display-md font-semibold">
-          {user ? `Welcome back, ${user.displayName}` : 'Dashboard'}
-        </h1>
-        <p className="text-muted">Everything happening on the show right now.</p>
-      </header>
+      <PageHeader
+        title={user ? `Welcome back, ${user.displayName}` : 'Dashboard'}
+        description="Everything happening on the show right now."
+      />
 
       {user && !user.emailVerified && (
         <Alert tone="warning" title="Confirm your email to take part">
@@ -347,9 +346,10 @@ function HottestContestants({ data }: { data: DashboardSummary }) {
 
         <Link
           href="/contestants"
-          className="mt-2 block text-sm text-primary underline-offset-4 hover:underline"
+          className="mt-1 inline-flex h-9 items-center gap-1 text-sm text-primary underline-offset-4 hover:underline"
         >
-          See the full heat meter →
+          See the full heat meter
+          <ArrowRight className="h-4 w-4" aria-hidden />
         </Link>
       </CardContent>
     </Card>
