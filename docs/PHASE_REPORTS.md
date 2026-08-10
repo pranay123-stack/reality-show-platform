@@ -1625,3 +1625,89 @@ guard, because a guard that is present but bypassed still passes an inspection.
 
 `pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 601 passed · `pnpm build` 4/4 ·
 `pnpm audit` clean.
+
+---
+
+## Phase 19 — Analytics System
+
+Product analytics that observes the platform without participating in it.
+
+### The rule that shaped everything
+
+**Dashboards read aggregates, never the event log.** A chart that scans millions
+of raw rows — or worse, the tables serving a live show — is an outage waiting
+for a busy night. So the storage splits three ways:
+
+- `AnalyticsEvent` — the raw log. Append-only, thin, and read by exactly one
+  thing: the aggregation pass.
+- `AnalyticsAggregate` — one row per (day, metric, dimension). Every chart reads
+  this.
+- `AnalyticsSnapshot` — rolling windows and retention. DAU/WAU/MAU cannot be
+  summed from daily values (a user active on three days is one weekly active),
+  so they are computed once and stored.
+
+A test proves the separation structurally: it aggregates, **deletes every raw
+event**, and asserts the dashboard still answers correctly.
+
+### Where events come from
+
+Three sources, chosen by what each can be trusted with:
+
+1. **The domain event bus** — the second consumer it was built for. Notifications
+   subscribe to tell people things; analytics subscribes to count them. Neither
+   knows the other exists.
+2. **Server-side instrumentation** for anything with a consequence: signups,
+   logins, votes, submissions. `void track(...)` at the point the action
+   succeeded.
+3. **Client ingest** for the one thing a server cannot observe — what somebody
+   *looked at*.
+
+The ingest accepts a five-item allow-list of view events and nothing else. A
+client posting `poll_voted`, `reward_redeemed` or `signup` gets a 400, which a
+test asserts: otherwise the numbers that matter could be inflated from a
+console.
+
+### Observation never affects behaviour
+
+`track` swallows every error and returns nothing a caller acts on. A vote that
+succeeded must not report failure because an observation could not be written.
+The one thing that had to be added for correctness was in-flight tracking —
+`settleAnalytics()` — because fire-and-forget writes deadlock against a test's
+`TRUNCATE` and would be cut in half by a deploy. Exactly the problem the domain
+event bus had in Phase 16, solved the same way.
+
+### Privacy
+
+Opting out means **no event is recorded at all** — not an anonymised one. A
+de-identified row is still a row about somebody who asked not to be measured.
+Opting out is also retrospective: what was already collected is deleted.
+
+That makes the numbers incomplete, so the dashboard says so: an operator sees
+"3 of 47 accounts have opted out … these figures describe 93.6% of the
+platform". Hiding the gap would be the dishonest choice.
+
+Properties are sanitised on the way in — anything whose key contains `password`,
+`token`, `email`, `phone`, `ip`, `hash` and so on is dropped, along with values
+too long or too nested to be context. A test feeds a payload of credentials
+through the real ingest path and asserts none of it survives.
+
+### Tests
+
+37 integration tests across the eight required scenarios. The performance case
+writes **10 000 events**, aggregates them, and asserts the dashboard read stays
+under two seconds — the point being that read cost must not scale with the size
+of the log.
+
+### Live verification
+
+| Check | Result |
+| --- | --- |
+| `/admin/analytics` at 1440 / 834 / 390 | **0 px** horizontal overflow |
+| Events observed from real actions | a poll vote recorded `poll_voted` server-side, not from the client |
+| Client posting a consequential event | **400** — `poll_voted`, `reward_redeemed`, `signup` all refused |
+| Opt-out | events stop, history deleted, other users unaffected |
+| Dashboard with the raw log deleted | still correct, because it reads aggregates |
+| Permissions | user and moderator refused; producer and admin allowed; rebuild audited |
+
+`pnpm typecheck` 7/7 · `pnpm lint` 5/5 (0 warnings) · `pnpm test` 638 passed ·
+`pnpm build` 4/4.

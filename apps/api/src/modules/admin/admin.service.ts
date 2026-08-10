@@ -49,6 +49,7 @@ const SECTION_PERMISSIONS: Record<string, PermissionKey[]> = {
   weekend: ['weekend.manage'],
   rewards: ['reward.view'],
   leaderboard: ['leaderboard.inspect'],
+  analytics: ['analytics.view'],
   notifications: ['notification.inspect'],
   audit: ['audit.view'],
 };

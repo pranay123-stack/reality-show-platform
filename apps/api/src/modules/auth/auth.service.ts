@@ -8,6 +8,7 @@ import {
 } from '@reality/shared';
 
 import { getConfig } from '../../core/config.js';
+import { track } from '../analytics/analytics.service.js';
 import { clearAuthCookies } from '../../core/auth/cookies.js';
 import { parseDuration, signAccessToken } from '../../core/auth/jwt.js';
 import {
@@ -132,6 +133,11 @@ export async function signup(input: SignupInput, meta: RequestMeta): Promise<Aut
     role: user.role,
   });
 
+  // Observation only: `void` because a failure to count must never fail a
+  // signup, and nothing downstream reads the result.
+  void track({ name: 'signup', userId: user.id, sessionId: session.id });
+  void track({ name: 'session_started', userId: user.id, sessionId: session.id });
+
   return {
     user: toAuthUser({ ...user, profile: user.profile }),
     accessToken,
@@ -209,6 +215,9 @@ export async function login(input: LoginInput, meta: RequestMeta): Promise<AuthS
   });
 
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+
+  void track({ name: 'login', userId: user.id, sessionId: session.id });
+  void track({ name: 'session_started', userId: user.id, sessionId: session.id });
 
   return {
     user: toAuthUser(user),
@@ -372,7 +381,14 @@ export async function refresh(
 }
 
 export async function logout(sessionId: string): Promise<void> {
+  // Read the owner before revoking, so the event can be attributed.
+  const session = await prisma.userSession.findUnique({
+    where: { id: sessionId },
+    select: { userId: true },
+  });
+
   await revokeSessionById(sessionId);
+  void track({ name: 'logout', userId: session?.userId ?? null, sessionId });
 }
 
 async function revokeSessionById(sessionId: string): Promise<void> {

@@ -7,6 +7,7 @@ import {
 } from '@reality/shared';
 
 import { AppError, conflict, notFound } from '../../core/errors.js';
+import { track } from '../analytics/analytics.service.js';
 import { prisma } from '../../core/prisma.js';
 import { awardPoints } from '../points/points.service.js';
 import { getCurrentShowId } from '../show/show.service.js';
@@ -244,6 +245,8 @@ export async function votePerspective(
     reason: 'participation',
     ruleKey: 'PERSPECTIVE_PARTICIPATION',
   });
+
+  void track({ name: 'perspective_voted', userId, entityId: perspectiveId });
 
   return {
     perspective: await getPerspective(perspectiveId, userId),

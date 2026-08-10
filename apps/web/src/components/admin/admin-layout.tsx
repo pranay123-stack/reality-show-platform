@@ -3,6 +3,7 @@
 import { Alert, LoadingState, cn } from '@reality/ui';
 import { useQuery } from '@tanstack/react-query';
 import {
+  BarChart3,
   ClipboardList,
   Flame,
   Gauge,
@@ -50,6 +51,7 @@ const SECTIONS: Section[] = [
   { key: 'challenges', href: '/admin/challenges', label: 'Moderation', icon: MessagesSquare, group: 'Community' },
   { key: 'rewards', href: '/admin/rewards', label: 'Rewards', icon: Gift, group: 'Community' },
   { key: 'leaderboard', href: '/admin/leaderboard', label: 'Leaderboard', icon: Trophy, group: 'Community' },
+  { key: 'analytics', href: '/admin/analytics', label: 'Analytics', icon: BarChart3, group: 'Platform' },
   { key: 'notifications', href: '/admin/notifications', label: 'Notifications', icon: ClipboardList, group: 'Platform' },
   { key: 'audit', href: '/admin/audit', label: 'Audit log', icon: ScrollText, group: 'Platform' },
 ];

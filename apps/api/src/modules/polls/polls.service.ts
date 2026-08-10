@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { ERROR_CODES } from '@reality/shared';
 
 import { AppError, conflict, notFound } from '../../core/errors.js';
+import { track } from '../analytics/analytics.service.js';
 import { prisma } from '../../core/prisma.js';
 import type { PollOptionCount, PollSnapshot } from '../../realtime/events.js';
 import { awardPoints } from '../points/points.service.js';
@@ -238,6 +239,8 @@ export async function castVote(
   });
 
   const poll = await loadPoll(pollId);
+
+  void track({ name: 'poll_voted', userId, entityId: pollId });
 
   return {
     counts: countsOf(poll),

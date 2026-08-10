@@ -413,6 +413,9 @@ model UserProfile {
   /// their own; they simply do not appear in anyone else's list.
   leaderboardVisible Boolean           @default(true)
   profileVisibility  ProfileVisibility @default(PUBLIC)
+  /// Opt out of product analytics. An opted-out account produces no analytics
+  /// event at all — not an anonymised one — so nothing about them is stored.
+  analyticsOptOut    Boolean           @default(false)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -1982,6 +1985,12 @@ model NotificationPreference {
 
 /// Minimal-PII product analytics: an event name, an optional user id, and
 /// non-identifying properties. No IP addresses, no advertising identifiers.
+/// The raw event log.
+///
+/// Append-only and deliberately thin: a name, who (or nobody), when, and a
+/// small bag of non-identifying properties. Nothing here is read by a dashboard
+/// — reading it would mean scanning millions of rows on every page load, which
+/// is exactly what `AnalyticsAggregate` exists to avoid.
 model AnalyticsEvent {
   id          String   @id @default(cuid())
   name        String
@@ -1989,7 +1998,12 @@ model AnalyticsEvent {
   anonymousId String?
   sessionId   String?
   showId      String?
+  /// Non-identifying context only; the ingest strips anything that looks like a
+  /// credential or a contact detail before it is written.
   properties  Json?
+  /// Collapses a repeat of the same happening, e.g. one `poll_viewed` per user
+  /// per poll per day rather than one per scroll.
+  dedupeKey   String?  @unique
   occurredAt  DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -1997,17 +2011,58 @@ model AnalyticsEvent {
   @@index([name, occurredAt])
   @@index([userId, occurredAt])
   @@index([occurredAt])
+  /// Serves the daily aggregation pass, which sweeps one day of one metric.
+  @@index([occurredAt, name])
 }
 
-model AnalyticsDailyRollup {
+/// A pre-computed number for one day, one metric, one dimension.
+///
+/// The dashboard reads only this table and `AnalyticsSnapshot`. That is the
+/// whole point of the split: a chart costs an indexed range scan over a few
+/// hundred rows rather than an aggregate over the event log or, worse, over the
+/// transactional tables that are serving the live show.
+model AnalyticsAggregate {
   id         String   @id @default(cuid())
+  /// Midnight UTC of the day being described.
   date       DateTime
   metric     String
+  /// Optional breakdown, e.g. a contestant id for `contestant_viewed`. The
+  /// empty string means "all", so the unique index can include it.
+  dimension  String   @default("")
   value      Float
+  /// Distinct users behind `value`, where that differs from the raw count.
+  uniqueUsers Int     @default(0)
   computedAt DateTime @default(now())
 
-  @@unique([date, metric])
+  @@unique([date, metric, dimension])
   @@index([metric, date])
+  @@index([date])
+}
+
+/// A full picture of the platform at one moment.
+///
+/// Rolling windows (DAU/WAU/MAU, retention) are not a sum of daily values, so
+/// they cannot be derived from the aggregates by addition. Computing them once
+/// and storing the answer keeps the dashboard's first paint to a single row.
+model AnalyticsSnapshot {
+  id         String   @id @default(cuid())
+  /// Midnight UTC of the day the snapshot describes.
+  date       DateTime @unique
+  dau        Int      @default(0)
+  wau        Int      @default(0)
+  mau        Int      @default(0)
+  newUsers   Int      @default(0)
+  sessions   Int      @default(0)
+  /// Mean session length in seconds, over sessions that ended.
+  avgSessionSeconds Int @default(0)
+  /// Share of the previous day's actives who returned, 0–100.
+  retentionD1 Float   @default(0)
+  retentionD7 Float   @default(0)
+  /// The whole metric set, so a new metric needs no migration to be charted.
+  metrics    Json?
+  computedAt DateTime @default(now())
+
+  @@index([date])
 }
 
 // ===========================================================================

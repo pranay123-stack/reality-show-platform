@@ -65,8 +65,13 @@ export function AdminOverview() {
             }))}
           />
 
-          {/* The chart is decorative for screen readers; the numbers are here. */}
-          <table className="sr-only">
+          {/*
+            The chart is decorative for screen readers; the numbers are here.
+            The `sr-only` sits on a wrapping div because a `<caption>` escapes a
+            table's own overflow clip.
+          */}
+          <div className="sr-only">
+          <table>
             <caption>Participants per day</caption>
             <tbody>
               {data.participation.days.map((day) => (
@@ -78,6 +83,7 @@ export function AdminOverview() {
               ))}
             </tbody>
           </table>
+          </div>
         </Card>
 
         <Card className="space-y-3 p-5">

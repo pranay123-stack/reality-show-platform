@@ -2,6 +2,8 @@ import { API_PREFIX } from '@reality/shared';
 import type { FastifyInstance } from 'fastify';
 
 import { adminRoutes } from './admin/admin.routes.js';
+import { analyticsRoutes } from './analytics/analytics.routes.js';
+import { registerAnalyticsSubscriber } from './analytics/analytics.subscriber.js';
 import { authRoutes } from './auth/auth.routes.js';
 import { challengeRoutes } from './challenges/challenges.routes.js';
 import { contestantRoutes } from './contestants/contestants.routes.js';
@@ -20,7 +22,7 @@ import { showRoutes } from './show/show.routes.js';
 import { userRoutes } from './users/users.routes.js';
 import { weekendRoutes } from './weekend/weekend.routes.js';
 
-const MODULES = ['health', 'auth', 'users', 'show', 'dashboard', 'contestants', 'predictions', 'challenges', 'perspectives', 'polls', 'nominations', 'evictions', 'kitchen', 'weekend', 'rewards', 'leaderboards', 'notifications', 'admin'];
+const MODULES = ['health', 'auth', 'users', 'show', 'dashboard', 'contestants', 'predictions', 'challenges', 'perspectives', 'polls', 'nominations', 'evictions', 'kitchen', 'weekend', 'rewards', 'leaderboards', 'notifications', 'admin', 'analytics'];
 
 /**
  * Single registration point for every feature module.
@@ -32,6 +34,9 @@ export async function registerModules(app: FastifyInstance): Promise<void> {
   // Subscribes the notification module to the domain event bus. Features emit
   // events regardless; this is what makes anybody listen.
   registerNotificationSubscriber();
+  // The second consumer of the same bus: notifications tell people things,
+  // analytics counts them, and neither knows the other exists.
+  registerAnalyticsSubscriber();
 
   await app.register(healthRoutes);
 
@@ -56,6 +61,7 @@ export async function registerModules(app: FastifyInstance): Promise<void> {
       await api.register(leaderboardRoutes, { prefix: '/leaderboards' });
       await api.register(notificationRoutes, { prefix: '/notifications' });
       await api.register(adminRoutes, { prefix: '/admin' });
+      await api.register(analyticsRoutes, { prefix: '/analytics' });
     },
     { prefix: API_PREFIX },
   );

@@ -1,6 +1,6 @@
 # Build status
 
-**Last updated:** end of Phase 18.
+**Last updated:** end of Phase 19.
 
 Everything below was executed and observed, not assumed. Per-phase detail is in
 [`PHASE_REPORTS.md`](PHASE_REPORTS.md); the design is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -13,16 +13,16 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | --- | --- | --- |
 | Typecheck | `pnpm typecheck` | 7/7 packages |
 | Lint | `pnpm lint` | 5/5 packages, 0 warnings |
-| Tests | `pnpm test` | **601 passed** (594 API across 29 files, 7 shared) |
+| Tests | `pnpm test` | **638 passed** (631 API across 30 files, 7 shared) |
 | Build | `pnpm build` | 4/4 (API bundle + Next production build) |
-| Migrations | `prisma migrate deploy` | 8 migrations, applied cleanly, no drift |
+| Migrations | `prisma migrate deploy` | 9 migrations, applied cleanly, no drift |
 | Seed | `pnpm db:seed` | idempotent, completes |
 | Dependencies | `pnpm audit` | **no known vulnerabilities** |
 | Runtime | API + web started, flows exercised via curl and headless Chromium | see below |
 
 ---
 
-## Phases complete: 0 – 18
+## Phases complete: 0 – 19
 
 | Phase | Delivered |
 | --- | --- |
@@ -45,6 +45,7 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 | **16** | Notification System: features emit domain events to a durable outbox; the notification module subscribes. No feature imports it. Deduplicated per (event, entity, user), preference-respecting, template-driven, with IN_APP delivering and EMAIL/PUSH declared as real providers that report themselves unconfigured. Admin health, failure inspection and retry. 1000 identical events yield one notification per user |
 | **17** | Producer/Admin console at `/admin`: eleven sections over the endpoints that already existed, plus the three genuine gaps (contestant management, operator lists for predictions and polls, an audit reader). Sections resolve server-side from the caller's permissions — moderator 5, producer 10, admin 11, viewer refused. Audit trail filterable by module, action, actor, target and date, and provably read-only |
 | **18** | Security audit and hardening: eleven findings, each reproduced against a running stack and re-tested after the fix. Two high — a WebSocket that authorised once at handshake so a suspended account kept voting, and `z.string().url()` accepting `javascript:`. Plus socket rate limits, CSV formula injection, a rate limiter answering 500 instead of 429, per-account limit keys, a CSP, and dependencies to zero advisories. 40 security regression tests and [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) |
+| **19** | Analytics: `AnalyticsEvent` (raw log) → aggregation pass → `AnalyticsAggregate` + `AnalyticsSnapshot`, with dashboards reading only the latter two. Events arrive from the domain bus, from server-side instrumentation, and from a five-item client allow-list; anything with a consequence is recorded from the action. Opt-out records nothing and deletes history, and the dashboard states what share of the platform it describes |
 
 ### Things worth knowing
 
@@ -96,15 +97,22 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
   client — for seventeen phases, because the path had no test.
 - Findings, fixes, defences that held and remaining risks are in
   [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md).
+- **Analytics reads aggregates, never the event log.** A test proves it structurally: it
+  aggregates, deletes every raw event, and asserts the dashboard still answers.
+- **The client may only report views.** `poll_voted`, `reward_redeemed` and `signup` from a browser
+  are a 400 — anything with a consequence is recorded server-side from the action itself.
+- **Opting out of analytics records nothing**, not an anonymised row, and deletes what was already
+  collected. The dashboard surfaces the resulting coverage gap rather than hiding it.
+- **Do not run two test suites at once.** They truncate the same tables and destroy each other; a
+  concurrent pair produced 63 phantom failures that a single clean run does not reproduce.
 - No 404 routes remain in the navigation.
 
 ---
 
-## Remaining: Phases 19 – 24
+## Remaining: Phases 20 – 24
 
 | Phase | Scope | Notes for whoever picks this up |
 | --- | --- | --- |
-| 19 | Analytics | `AnalyticsEvent` + rollup models exist; taxonomy is in `ANALYTICS_EVENT_NAMES`. |
 | 20 | UI/UX polish | Loading/empty/error states already exist as components. |
 | 21 | Full test pass | Playwright is installed and Chromium is downloaded; `apps/web/scripts/verify-ui.mjs` is a working harness to build on. |
 | 22 | Performance | |

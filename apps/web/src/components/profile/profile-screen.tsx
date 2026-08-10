@@ -26,6 +26,10 @@ import type { z } from 'zod';
 
 import { ApiError, api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
+import {
+  useAnalyticsPrivacy,
+  useUpdateAnalyticsPrivacy,
+} from '@/hooks/use-analytics';
 import { useAuth } from '@/providers/auth-provider';
 
 type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
@@ -63,6 +67,7 @@ export function ProfileScreen() {
         <ProfileDetailsCard />
         <AccountSummaryCard />
         <ChangePasswordCard />
+        <AnalyticsPrivacyCard />
         <SessionsCard />
       </div>
     </div>
@@ -299,6 +304,55 @@ function SessionsCard() {
         ))}
 
         {sessions?.length === 0 && <p className="text-sm text-muted">No other active sessions.</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * The analytics opt-out.
+ *
+ * Placed with the account controls rather than buried in a policy page: a
+ * setting somebody cannot find is not a choice they have.
+ */
+function AnalyticsPrivacyCard() {
+  const privacy = useAnalyticsPrivacy();
+  const update = useUpdateAnalyticsPrivacy();
+  const optedOut = privacy.data?.optedOut ?? false;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Product analytics</CardTitle>
+        <CardDescription>
+          We count how the show is used — which features people reach for, how many take part —
+          to decide what to build. Never what you wrote, never your contact details.
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted">
+            {optedOut
+              ? 'You are not being measured. Nothing about you is recorded.'
+              : 'Your activity is counted anonymously in platform totals.'}
+          </p>
+          <Button
+            size="sm"
+            variant={optedOut ? 'secondary' : 'ghost'}
+            loading={update.isPending}
+            disabled={privacy.isLoading}
+            onClick={() => update.mutate(!optedOut)}
+          >
+            {optedOut ? 'Turn analytics on' : 'Turn analytics off'}
+          </Button>
+        </div>
+
+        {!optedOut && (
+          <p className="text-xs text-muted">
+            Turning this off also deletes what has already been collected about you.
+          </p>
+        )}
       </CardContent>
     </Card>
   );

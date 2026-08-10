@@ -17,11 +17,13 @@ import { toast } from 'sonner';
 
 import { ApiError, api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
+import { useTrackView } from '@/hooks/use-analytics';
 import { useAuth } from '@/providers/auth-provider';
 
 type Scope = 'open' | 'mine' | 'resolved';
 
 export function PredictionsScreen() {
+  useTrackView('prediction_viewed');
   const [scope, setScope] = useState<Scope>('open');
   const { canParticipate } = useAuth();
   const queryClient = useQueryClient();

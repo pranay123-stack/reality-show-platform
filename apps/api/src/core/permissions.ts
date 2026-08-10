@@ -53,6 +53,8 @@ export const PERMISSIONS = {
   WEEKEND_PHYSICAL_REWARDS: 'weekend.physical_rewards',
 
   ANALYTICS_VIEW: 'analytics.view',
+  /// Recomputing the aggregates is an operational action, not a read.
+  ANALYTICS_REBUILD: 'analytics.rebuild',
 
   // Leaderboards. Inspecting a ranking is a moderation-grade question ("why is
   // this account top?"), rebuilding the cache is routine operations, and
@@ -139,6 +141,7 @@ const PRODUCER_PERMISSIONS: PermissionKey[] = [
   PERMISSIONS.WEEKEND_SELECT,
   PERMISSIONS.WEEKEND_PHYSICAL_REWARDS,
   PERMISSIONS.ANALYTICS_VIEW,
+  PERMISSIONS.ANALYTICS_REBUILD,
   PERMISSIONS.REWARD_MANAGE,
   PERMISSIONS.REWARD_PHYSICAL_AUTHORISE,
   PERMISSIONS.LEADERBOARD_REBUILD,

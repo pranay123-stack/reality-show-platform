@@ -19,9 +19,12 @@ import Link from 'next/link';
 
 import { HeatChart } from '@/components/contestants/heat-chart';
 import { useContestant } from '@/hooks/use-contestants';
+import { useTrackView } from '@/hooks/use-analytics';
 
 export function ContestantDetail({ id }: { id: string }) {
   const { data, isLoading, isError, refetch } = useContestant(id);
+  // Reported once per contestant per mount; the server dedupes to one per day.
+  useTrackView('contestant_viewed', data?.id);
 
   if (isLoading) return <LoadingState rows={5} />;
   if (isError || !data) return <ErrorState onRetry={() => void refetch()} />;

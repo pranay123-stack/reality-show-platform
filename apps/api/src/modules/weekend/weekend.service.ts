@@ -9,6 +9,7 @@ import {
 } from '@reality/shared';
 
 import { AppError, conflict, forbidden, notFound } from '../../core/errors.js';
+import { track } from '../analytics/analytics.service.js';
 import { emitDomainEvent } from '../../core/domain-events.js';
 import { prisma } from '../../core/prisma.js';
 import { screenContent } from '../challenges/content-moderation.js';
@@ -403,6 +404,8 @@ export async function submitEntry(
     reason: 'submission',
     ruleKey: 'WEEKEND_SUBMISSION',
   });
+
+  void track({ name: 'weekend_submitted', userId, entityId: round.id });
 
   return {
     submission: toMySubmission(submission),

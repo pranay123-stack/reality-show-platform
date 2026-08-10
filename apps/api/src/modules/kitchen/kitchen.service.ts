@@ -12,6 +12,7 @@ import {
 } from '@reality/shared';
 
 import { AppError, conflict, notFound } from '../../core/errors.js';
+import { track } from '../analytics/analytics.service.js';
 import { emitDomainEvent } from '../../core/domain-events.js';
 import { prisma } from '../../core/prisma.js';
 import { awardPoints } from '../points/points.service.js';
@@ -413,6 +414,8 @@ export async function castKitchenVote(
   });
 
   const view = await getDecision(decisionId, userId);
+
+  void track({ name: 'kitchen_voted', userId, entityId: decisionId });
 
   return {
     decision: view,

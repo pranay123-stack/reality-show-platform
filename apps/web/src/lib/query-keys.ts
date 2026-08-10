@@ -77,6 +77,7 @@ export const queryKeys = {
   },
   dashboard: ['dashboard'] as const,
   admin: {
+    all: ['admin'] as const,
     overview: ['admin', 'overview'] as const,
     section: (section: string, params?: unknown) => ['admin', section, params ?? {}] as const,
   },

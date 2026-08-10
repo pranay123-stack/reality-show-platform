@@ -8,6 +8,7 @@ import {
 } from '@reality/shared';
 
 import { AppError, conflict, forbidden, notFound } from '../../core/errors.js';
+import { track } from '../analytics/analytics.service.js';
 import { emitDomainEvent } from '../../core/domain-events.js';
 import { prisma } from '../../core/prisma.js';
 import { awardPoints } from '../points/points.service.js';
@@ -312,7 +313,9 @@ export async function voteForChallenge(challengeId: string, userId: string): Pro
       }),
     ]);
 
-    return { challengeId, voteCount: updated.voteCount, hasVoted: true };
+    void track({ name: 'challenge_voted', userId, entityId: challengeId });
+
+  return { challengeId, voteCount: updated.voteCount, hasVoted: true };
   } catch (error) {
     if (isUniqueViolation(error)) {
       throw conflict(ERROR_CODES.VOTE_DUPLICATE, 'You have already voted for this challenge');

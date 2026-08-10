@@ -185,7 +185,7 @@ Detailed columns land in Phase 2. This is the entity map and the invariants that
 ### 4.4 Economy & engagement
 `PointsLedger`, `PointsRule`, `Reward`, `RewardRedemption`, `Leaderboard`, `LeaderboardEntry`,
 `Notification`, `NotificationEvent`, `NotificationPreference`, `NotificationTemplate`,
-`NotificationDelivery`, `AnalyticsEvent`.
+`NotificationDelivery`, `AnalyticsEvent`, `AnalyticsAggregate`, `AnalyticsSnapshot`.
 
 ### 4.5 Governance
 `AdminAction`, `AuditLog`, `AbuseReport`, `ModerationDecision`, `IdempotencyKey`.
@@ -415,7 +415,7 @@ pnpm start                # production start (after build)
 | 16 | Notifications | event-driven via a durable outbox; no feature imports the notification module; deduplicated per (event, entity, user); preference-respecting; IN_APP live with EMAIL/PUSH declared. |
 | 17 | Admin/producer dashboard | every domain operable from `/admin`, driving the existing endpoints rather than duplicating them; sections resolved server-side per role; audit trail readable and filterable, and provably append-only. |
 | 18 | Security & abuse hardening | eleven findings fixed and re-tested; per-event WebSocket authorisation; URL scheme validation; socket and per-account rate limits; CSP; zero dependency advisories. See `SECURITY_AUDIT.md`. |
-| 19 | Analytics | event taxonomy + admin visualisations, minimal PII. |
+| 19 | Analytics | raw log separated from pre-aggregated numbers so dashboards never scan events or transactional tables; client ingest limited to view events; opt-out stores nothing and erases history. |
 | 20 | UI/UX polish | loading/empty/error states, a11y, keyboard nav, contrast. |
 | 21 | Full test pass | unit + integration + Playwright E2E, all listed scenarios. |
 | 22 | Performance pass | load scenarios + bottleneck report + optimisations. |

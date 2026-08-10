@@ -180,21 +180,5 @@ export type ShowEventType = (typeof EVENT_TYPES)[number];
 export const HEAT_TRENDS = ['UP', 'DOWN', 'FLAT'] as const;
 export type HeatTrend = (typeof HEAT_TRENDS)[number];
 
-export const ANALYTICS_EVENT_NAMES = [
-  'signup',
-  'login',
-  'prediction_started',
-  'prediction_submitted',
-  'poll_viewed',
-  'poll_voted',
-  'challenge_created',
-  'challenge_voted',
-  'perspective_voted',
-  'contestant_viewed',
-  'kitchen_voted',
-  'nomination_voted',
-  'eviction_voted',
-  'weekend_submitted',
-  'reward_earned',
-] as const;
-export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
+// The analytics taxonomy lives in `schemas/analytics.ts`, next to the metric
+// catalogue and the ingest schema that give the names meaning.

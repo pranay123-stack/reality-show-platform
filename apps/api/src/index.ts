@@ -4,6 +4,8 @@ import { getConfig } from './core/config.js';
 import { checkDatabase, disconnectPrisma } from './core/prisma.js';
 import { checkRedis, disconnectRedis } from './core/redis.js';
 import { settleDomainEvents } from './core/domain-events.js';
+import { aggregateRange } from './modules/analytics/aggregation.js';
+import { settleAnalytics } from './modules/analytics/analytics.service.js';
 import {
   cancelScheduledSync,
   syncLeaderboards,
@@ -45,6 +47,26 @@ async function main(): Promise<void> {
   }, config.HEAT_RECOMPUTE_INTERVAL_MS);
   projectionTimer.unref();
 
+  /**
+   * The analytics aggregation pass.
+   *
+   * Deliberately hourly and deliberately only the last two days: yesterday can
+   * still receive late events, and everything older is already settled. A full
+   * recompute is an operator action, not something a server does on a timer.
+   *
+   * In the server entrypoint rather than `buildApp` so tests get no background
+   * pass racing their assertions.
+   */
+  const runAggregation = () =>
+    void aggregateRange(2).catch((error) =>
+      app.log.warn({ err: error }, 'analytics aggregation pass failed'),
+    );
+
+  const analyticsTimer = setInterval(runAggregation, config.ANALYTICS_INTERVAL_MS);
+  analyticsTimer.unref();
+  // One pass at boot so a freshly started stack has numbers to show.
+  runAggregation();
+
   await app.listen({ port: config.API_PORT, host: config.API_HOST });
   app.log.info(`API listening on http://${config.API_HOST}:${config.API_PORT}`);
   app.log.info('realtime namespace /live attached');
@@ -53,10 +75,12 @@ async function main(): Promise<void> {
     app.log.info({ signal }, 'shutting down');
     try {
       clearInterval(projectionTimer);
+      clearInterval(analyticsTimer);
       cancelScheduledSync();
       // Let queued notification fan-outs finish rather than cutting them off
       // half-written; they are short and the alternative is a lost telling.
       await settleDomainEvents();
+      await settleAnalytics();
       await app.close();
       await Promise.all([disconnectPrisma(), disconnectRedis()]);
       process.exit(0);

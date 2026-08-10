@@ -21,6 +21,7 @@ import { useLivePoll } from '@/hooks/use-live-poll';
 import { api } from '@/lib/api-client';
 import { queryKeys } from '@/lib/query-keys';
 import type { PollSnapshot } from '@/lib/socket';
+import { useTrackView } from '@/hooks/use-analytics';
 import { useAuth } from '@/providers/auth-provider';
 
 type Scope = 'active' | 'past';
@@ -30,6 +31,7 @@ interface PollListItem extends PollSnapshot {
 }
 
 export function PollsScreen() {
+  useTrackView('poll_viewed');
   const [scope, setScope] = useState<Scope>('active');
   const { canParticipate } = useAuth();
 

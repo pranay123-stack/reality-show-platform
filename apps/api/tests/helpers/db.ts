@@ -22,7 +22,8 @@ const TABLES_IN_DELETION_ORDER = [
   'AbuseReport',
   'AuditLog',
   'AdminAction',
-  'AnalyticsDailyRollup',
+  'AnalyticsSnapshot',
+  'AnalyticsAggregate',
   'AnalyticsEvent',
   'NotificationDelivery',
   'NotificationPreference',
@@ -128,6 +129,11 @@ export async function resetAll(): Promise<void> {
   // than an intermittent 40P01.
   const { settleDomainEvents } = await import('../../src/core/domain-events.js');
   await settleDomainEvents();
+
+  // Analytics writes are fire-and-forget for the same reason and carry the same
+  // hazard: a pending insert deadlocks against TRUNCATE.
+  const { settleAnalytics } = await import('../../src/modules/analytics/analytics.service.js');
+  await settleAnalytics();
 
   await Promise.all([resetDatabase(), resetRedis()]);
 }

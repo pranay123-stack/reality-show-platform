@@ -15,10 +15,13 @@ import {
   useLeaderboard,
   useRespondToConnection,
 } from '@/hooks/use-leaderboard';
+import { useTrackView } from '@/hooks/use-analytics';
 import { useAuth } from '@/providers/auth-provider';
 
 export function LeaderboardScreen() {
   const { isAuthenticated } = useAuth();
+  // Observation only: a view is the one thing a server cannot see for itself.
+  useTrackView('leaderboard_viewed');
   const [scope, setScope] = useState<LeaderboardScope>('SEASON');
   const [window, setWindow] = useState<LeaderboardWindow>('SEASON');
   const [communityId, setCommunityId] = useState<string | null>(null);

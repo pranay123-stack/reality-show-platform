@@ -62,6 +62,9 @@ const configSchema = z.object({
 
   POLL_BROADCAST_THROTTLE_MS: z.coerce.number().int().min(50).max(5000).default(250),
   HEAT_RECOMPUTE_INTERVAL_MS: z.coerce.number().int().min(1000).default(60_000),
+  /// How often the analytics aggregation pass runs. Hourly is ample: the
+  /// dashboard describes days, not minutes.
+  ANALYTICS_INTERVAL_MS: z.coerce.number().int().min(60_000).default(3_600_000),
   LEADERBOARD_CACHE_TTL_S: z.coerce.number().int().min(5).default(60),
   /// The timezone that defines a leaderboard's day and week boundaries. Not the
   /// server's zone and not the viewer's: a shared ranking needs one agreed
