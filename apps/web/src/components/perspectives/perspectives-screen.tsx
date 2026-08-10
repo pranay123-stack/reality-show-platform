@@ -61,7 +61,7 @@ export function PerspectivesScreen() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Audience Perspective"
+        title="Pick A Side"
         description="Say what you think about something that already happened in the house."
         action={
           <Tabs value={scope} onValueChange={(value) => setScope(value as Scope)}>

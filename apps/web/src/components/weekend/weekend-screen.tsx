@@ -192,7 +192,7 @@ export function WeekendScreen() {
 function Header() {
   return (
     <PageHeader
-      title="Weekend Participation"
+      title="Weekend Spotlight"
       description="Send something in for the weekend episode. Entries are moderated, shortlisted, then chosen by production."
     />
   );

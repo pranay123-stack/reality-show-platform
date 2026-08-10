@@ -14,7 +14,6 @@
 export interface ArenaEvent {
   key: string;
   title: string;
-  subtitle: string;
   /** Drives the badge, the accent and whether the countdown reads as urgent. */
   state: 'live' | 'closing' | 'open' | 'upcoming';
   theme: 'pink' | 'cyan' | 'purple' | 'gold';
@@ -29,46 +28,42 @@ export interface ArenaEvent {
 export const arenaEvents: ArenaEvent[] = [
   {
     key: 'nomination',
-    title: 'Nomination Battle',
-    subtitle: 'Three names on the block. Yours is one of the votes.',
+    title: 'Nomination Night',
     state: 'live',
     theme: 'pink',
     participants: 12_450,
     closesInSeconds: 512,
-    cta: { label: 'Cast your votes', href: '/nominations' },
+    cta: { label: 'Vote now', href: '/nominations' },
     standing: 'Tomás Reyes leads on 41% of audience support',
   },
   {
     key: 'kitchen',
-    title: 'Kitchen Control',
-    subtitle: 'Decide tomorrow’s menu inside production’s budget.',
+    title: 'Kitchen Battle',
     state: 'open',
     theme: 'cyan',
     participants: 6_120,
     closesInSeconds: 3_240,
-    cta: { label: 'Pick the menu', href: '/kitchen' },
+    cta: { label: 'Make your move', href: '/kitchen' },
     standing: '3,150 of 5,000 budget units committed',
   },
   {
     key: 'poll',
     title: 'Audience Poll',
-    subtitle: 'Running live during the broadcast.',
     state: 'live',
     theme: 'purple',
     participants: 9_980,
     closesInSeconds: 138,
-    cta: { label: 'Vote now', href: '/polls' },
+    cta: { label: 'Vote live', href: '/polls' },
     standing: '58% say the house earned the luxury budget',
   },
   {
     key: 'weekend',
-    title: 'Weekend Question',
-    subtitle: 'Send a question the house answers on Saturday.',
+    title: 'Weekend Spotlight',
     state: 'open',
     theme: 'gold',
     participants: 2_180,
     closesInSeconds: 15_600,
-    cta: { label: 'Send a question', href: '/weekend' },
+    cta: { label: 'Take the spotlight', href: '/weekend' },
     standing: '24 shortlisted so far · 3 make the episode',
   },
 ];

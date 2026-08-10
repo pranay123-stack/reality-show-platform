@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useMemo } from 'react';
 
-import { InteractiveFeatureCard, ShareRow } from '@/components/marketing/feature-card';
+import { EntertainmentCard, ShareRow } from '@/components/marketing/entertainment-card';
 import { CountUp, LiveTicker, Meter } from '@/components/system/premium';
 import { featureMetrics } from '@/lib/mock-arena';
 import {
@@ -32,11 +32,12 @@ import {
 import { stagger, viewportOnce } from '@/lib/motion';
 
 /**
- * The eight features, each showing what it looks like in use.
+ * The eight ways in.
  *
- * Every card carries its own preview because the features are not variations on
- * one thing. The card component supplies the frame, the live state and one
- * headline number; everything below that line is specific to the feature.
+ * Each card leads with a number and a question rather than a name and a
+ * description. The name is still there — small, above the question — because a
+ * returning viewer navigates by it, but it is no longer the loudest thing on a
+ * card whose job is to make somebody want to answer.
  *
  * The data is fictional and labelled as such at the foot of the section.
  */
@@ -60,19 +61,17 @@ export function FeatureGrid() {
       viewport={viewportOnce}
       className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
     >
-      {/* --- Prediction Game ------------------------------------------------ */}
       <li>
-        <InteractiveFeatureCard
+        <EntertainmentCard
           icon={<Target className="h-5 w-5" aria-hidden />}
-          title="Prediction Game"
-          description="Predict what happens next. One prediction per question, locked the moment it closes."
+          title="Make Your Prediction"
+          question="Who gets captaincy tonight?"
           theme="pink"
-          liveStatus="open"
+          status="open"
           metric={featureMetrics.prediction}
-          cta={{ label: 'Make prediction', href: '/predictions' }}
-          previewData={
+          cta={{ label: 'Make your move', href: '/predictions' }}
+          preview={
             <div className="space-y-3">
-              <p className="text-xs font-medium text-foreground">{predictionDemo.question}</p>
               <div className="space-y-2.5">
                 {predictionDemo.options.map((option) => (
                   <ShareRow
@@ -84,40 +83,39 @@ export function FeatureGrid() {
                   />
                 ))}
               </div>
-              <div className="flex items-center justify-between gap-2 text-[11px] text-muted">
-                <span>Closes in</span>
-                <Countdown to={predictionCloses} finishedLabel="Closed" />
+              <div className="flex items-center justify-between gap-2 text-xs text-muted">
+                <span>Locks in</span>
+                <Countdown to={predictionCloses} finishedLabel="Locked" />
               </div>
             </div>
           }
         />
       </li>
 
-      {/* --- Audience Challenges ------------------------------------------- */}
       <li>
-        <InteractiveFeatureCard
+        <EntertainmentCard
           icon={<Sparkles className="h-5 w-5" aria-hidden />}
-          title="Audience Challenges"
-          description="Create tasks for the house. The community votes, moderators check, producers choose."
+          title="Change The House"
+          question="What should they be made to do?"
           theme="purple"
-          liveStatus="open"
+          status="open"
           statusLabel="Voting"
           metric={featureMetrics.challenge}
-          cta={{ label: 'Submit challenge', href: '/challenges/new' }}
-          previewData={
+          cta={{ label: 'Write a challenge', href: '/challenges/new' }}
+          preview={
             <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">Top challenge</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted">Leading tonight</p>
               <p className="mt-1 text-sm font-medium">“{challengeDemo.top}”</p>
 
               <div className="mt-2.5 flex items-center justify-between gap-2">
                 <span className="flex min-w-0 items-center gap-1.5">
                   <Avatar name={challengeDemo.creator} size="sm" className="h-5 w-5 text-[9px]" />
-                  <span className="truncate text-[11px] text-muted">{challengeDemo.creator}</span>
+                  <span className="truncate text-xs text-muted">{challengeDemo.creator}</span>
                   <span className="shrink-0 rounded-full border border-neon-purple/30 bg-neon-purple/10 px-1.5 text-[10px] font-semibold text-neon-purple">
                     #{challengeDemo.creatorRank}
                   </span>
                 </span>
-                <span className="shrink-0 text-[11px] tabular-nums text-muted">
+                <span className="shrink-0 text-xs tabular-nums text-muted">
                   <CountUp value={challengeDemo.votes} className="text-foreground" /> votes
                 </span>
               </div>
@@ -126,17 +124,16 @@ export function FeatureGrid() {
         />
       </li>
 
-      {/* --- Contestant Heat Meter ------------------------------------------ */}
       <li>
-        <InteractiveFeatureCard
+        <EntertainmentCard
           icon={<Flame className="h-5 w-5" aria-hidden />}
-          title="Contestant Heat Meter"
-          description="A live popularity score built from votes, reactions and momentum — recomputed on the server."
+          title="House Heat"
+          question="Who owns the spotlight?"
           theme="gold"
-          liveStatus="live"
+          status="live"
           metric={featureMetrics.heat}
-          cta={{ label: 'See the meter', href: '/contestants' }}
-          previewData={
+          cta={{ label: 'See the heat', href: '/contestants' }}
+          preview={
             <ul className="space-y-2.5">
               {heatDemo.map((contestant) => (
                 <li key={contestant.name} className="flex items-center gap-2">
@@ -154,59 +151,52 @@ export function FeatureGrid() {
         />
       </li>
 
-      {/* --- Audience Perspective ------------------------------------------- */}
       <li>
-        <InteractiveFeatureCard
+        <EntertainmentCard
           icon={<MessageSquareQuote className="h-5 w-5" aria-hidden />}
-          title="Audience Perspective"
-          description="After an argument, say who was right. Opinion about what already happened, kept apart from live polls."
+          title="Pick A Side"
+          question="Who was right?"
           theme="cyan"
-          liveStatus="open"
+          status="open"
           metric={featureMetrics.perspective}
           cta={{ label: 'Take a side', href: '/perspectives' }}
-          previewData={
-            <div className="space-y-3">
-              <p className="text-xs font-medium text-foreground">{perspectiveDemo.question}</p>
-
+          preview={
+            <div className="space-y-1.5">
               {/* One bar, two sides — the shape of the disagreement itself. */}
-              <div className="space-y-1.5">
-                <div className="flex h-8 w-full overflow-hidden rounded-lg border border-white/10">
-                  <motion.div
-                    className="flex items-center justify-start bg-neon-cyan/25 pl-2 text-[11px] font-semibold text-neon-cyan"
-                    initial={{ width: '50%' }}
-                    whileInView={{ width: `${perspectiveDemo.left.percent}%` }}
-                    viewport={{ once: true, amount: 0.5 }}
-                    transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    {perspectiveDemo.left.percent}%
-                  </motion.div>
-                  <div className="flex flex-1 items-center justify-end bg-neon-purple/25 pr-2 text-[11px] font-semibold text-neon-purple">
-                    {perspectiveDemo.right.percent}%
-                  </div>
+              <div className="flex h-9 w-full overflow-hidden rounded-lg border border-white/10">
+                <motion.div
+                  className="flex items-center justify-start bg-neon-cyan/25 pl-2 text-xs font-semibold text-neon-cyan"
+                  initial={{ width: '50%' }}
+                  whileInView={{ width: `${perspectiveDemo.left.percent}%` }}
+                  viewport={{ once: true, amount: 0.5 }}
+                  transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {perspectiveDemo.left.percent}%
+                </motion.div>
+                <div className="flex flex-1 items-center justify-end bg-neon-purple/25 pr-2 text-xs font-semibold text-neon-purple">
+                  {perspectiveDemo.right.percent}%
                 </div>
-                <div className="flex justify-between gap-2 text-[11px] text-muted">
-                  <span className="min-w-0 truncate">{perspectiveDemo.left.name}</span>
-                  <span className="min-w-0 truncate">{perspectiveDemo.right.name}</span>
-                </div>
+              </div>
+              <div className="flex justify-between gap-2 text-xs text-muted">
+                <span className="min-w-0 truncate">{perspectiveDemo.left.name}</span>
+                <span className="min-w-0 truncate">{perspectiveDemo.right.name}</span>
               </div>
             </div>
           }
         />
       </li>
 
-      {/* --- Live Polls ------------------------------------------------------ */}
       <li>
-        <InteractiveFeatureCard
+        <EntertainmentCard
           icon={<Radio className="h-5 w-5" aria-hidden />}
-          title="Real-time Live Polls"
-          description="Vote during the broadcast and watch the bars move. Counts come from the server, never the browser."
+          title="Live Polls"
+          question="Did they earn it?"
           theme="pink"
-          liveStatus="live"
+          status="live"
           metric={featureMetrics.poll}
-          cta={{ label: 'Vote live', href: '/polls' }}
-          previewData={
+          cta={{ label: 'Vote now', href: '/polls' }}
+          preview={
             <div className="space-y-3">
-              <p className="text-xs font-medium text-foreground">{livePollDemo.question}</p>
               <div className="space-y-2.5">
                 {livePollDemo.options.map((option) => (
                   <ShareRow
@@ -218,27 +208,26 @@ export function FeatureGrid() {
                 ))}
               </div>
               {/* The one number on the page that keeps moving while you read. */}
-              <p className="flex items-center gap-1.5 text-[11px] text-muted">
+              <p className="flex items-center gap-1.5 text-xs text-muted">
                 <span aria-hidden className="h-1.5 w-1.5 animate-pulse-live rounded-full bg-live" />
                 <LiveTicker value={48_260} perTick={14} className="font-semibold text-foreground" />
-                votes counted
+                counted
               </p>
             </div>
           }
         />
       </li>
 
-      {/* --- Nomination & Eviction ------------------------------------------- */}
       <li>
-        <InteractiveFeatureCard
+        <EntertainmentCard
           icon={<Gavel className="h-5 w-5" aria-hidden />}
-          title="Nomination & Eviction"
-          description="Take part in every round with a clear vote limit — and a clear line between the audience result and the show’s official outcome."
+          title="Nomination Night"
+          question="Who goes on the block?"
           theme="pink"
-          liveStatus="closing"
+          status="closing"
           metric={featureMetrics.nomination}
           cta={{ label: 'Cast your votes', href: '/nominations' }}
-          previewData={
+          preview={
             <div className="space-y-3">
               <ul className="space-y-2.5">
                 {nominationDemo.nominees.map((nominee) => (
@@ -247,14 +236,13 @@ export function FeatureGrid() {
                       label={nominee.name}
                       percent={nominee.support}
                       tone="pink"
-                      meta={`${nominee.support}%`}
                       avatar={<Avatar name={nominee.name} size="sm" className="h-5 w-5 text-[9px]" />}
                     />
                   </li>
                 ))}
               </ul>
-              <div className="flex items-center justify-between gap-2 rounded-lg border border-danger/25 bg-danger/[0.07] px-2.5 py-1.5 text-[11px] text-danger">
-                <span className="font-medium">Voting closes</span>
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-danger/25 bg-danger/[0.07] px-2.5 py-1.5 text-xs text-danger">
+                <span className="font-medium">Closes</span>
                 <Countdown to={nominationCloses} finishedLabel="Closed" />
               </div>
             </div>
@@ -262,24 +250,23 @@ export function FeatureGrid() {
         />
       </li>
 
-      {/* --- Kitchen Control -------------------------------------------------- */}
       <li>
-        <InteractiveFeatureCard
+        <EntertainmentCard
           icon={<ChefHat className="h-5 w-5" aria-hidden />}
-          title="Kitchen Control"
-          description="Decide what the house eats within a fixed budget. The final basket is calculated on the server."
+          title="Kitchen Battle"
+          question="What do they eat tomorrow?"
           theme="cyan"
-          liveStatus="open"
+          status="open"
           metric={featureMetrics.kitchen}
           cta={{ label: 'Pick the menu', href: '/kitchen' }}
-          previewData={
+          preview={
             <div className="space-y-3">
               <ul className="flex flex-wrap gap-1.5">
                 {kitchenDemo.basket.map((item) => (
                   <li
                     key={item.label}
                     className={cn(
-                      'rounded-full border px-2.5 py-1 text-[11px]',
+                      'rounded-full border px-2.5 py-1 text-xs',
                       item.chosen
                         ? 'border-neon-cyan/35 bg-neon-cyan/10 text-neon-cyan'
                         : 'border-white/10 bg-white/[0.03] text-muted line-through',
@@ -290,8 +277,8 @@ export function FeatureGrid() {
                 ))}
               </ul>
               <div className="space-y-1.5">
-                <div className="flex items-baseline justify-between text-[11px]">
-                  <span className="text-muted">Budget used</span>
+                <div className="flex items-baseline justify-between text-xs">
+                  <span className="text-muted">Budget</span>
                   <span className="tabular-nums text-foreground">
                     <CountUp value={kitchenDemo.budgetSpent} /> /{' '}
                     {kitchenDemo.budgetTotal.toLocaleString()}
@@ -307,26 +294,25 @@ export function FeatureGrid() {
         />
       </li>
 
-      {/* --- Weekend Participation --------------------------------------------- */}
       <li>
-        <InteractiveFeatureCard
+        <EntertainmentCard
           icon={<Trophy className="h-5 w-5" aria-hidden />}
-          title="Weekend Participation"
-          description="Send a question for the weekend episode. Moderated, shortlisted, then chosen by production."
+          title="Weekend Spotlight"
+          question="What would you ask them?"
           theme="gold"
-          liveStatus="idle"
+          status="idle"
           metric={featureMetrics.weekend}
-          cta={{ label: 'Send a question', href: '/weekend' }}
-          previewData={
+          cta={{ label: 'Take the spotlight', href: '/weekend' }}
+          preview={
             /* The funnel, narrowing — which is the whole point of the feature. */
             <ol className="space-y-2.5">
               {[
-                { label: 'Entries', value: weekendDemo.entries, percent: 100 },
+                { label: 'Asked', value: weekendDemo.entries, percent: 100 },
                 { label: 'Shortlisted', value: weekendDemo.shortlisted, percent: 34 },
-                { label: 'On the show', value: weekendDemo.selected, percent: 12 },
+                { label: 'On air', value: weekendDemo.selected, percent: 12 },
               ].map((step) => (
                 <li key={step.label} className="space-y-1.5">
-                  <div className="flex items-baseline justify-between gap-2 text-[11px]">
+                  <div className="flex items-baseline justify-between gap-2 text-xs">
                     <span className="text-muted">{step.label}</span>
                     <CountUp value={step.value} className="font-semibold text-foreground" />
                   </div>
@@ -349,7 +335,7 @@ function HeatDelta({ delta, trend }: { delta: number; trend: 'UP' | 'DOWN' | 'FL
   return (
     <span
       className={cn(
-        'flex shrink-0 items-center gap-0.5 text-[11px] font-semibold tabular-nums',
+        'flex shrink-0 items-center gap-0.5 text-xs font-semibold tabular-nums',
         rising ? 'text-success' : falling ? 'text-danger' : 'text-muted',
       )}
     >
@@ -360,9 +346,7 @@ function HeatDelta({ delta, trend }: { delta: number; trend: 'UP' | 'DOWN' | 'FL
       ) : null}
       {delta > 0 ? '+' : ''}
       {delta}
-      <span className="sr-only">
-        {rising ? 'up' : falling ? 'down' : 'unchanged'} today
-      </span>
+      <span className="sr-only">{rising ? 'up' : falling ? 'down' : 'unchanged'} today</span>
     </span>
   );
 }

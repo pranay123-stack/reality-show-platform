@@ -245,7 +245,12 @@ export function StatCard({ label, value, hint, icon, trend, className }: StatCar
         {icon && <span className="text-muted">{icon}</span>}
       </div>
 
-      <p className="mt-2 text-2xl font-semibold tabular-nums">
+      {/*
+        The size steps down on narrow screens. A five- or six-figure count in a
+        three-column grid at 390px overflows its own card at 24px, and a stat
+        card exists precisely to hold numbers that large.
+      */}
+      <p className="mt-2 truncate text-xl font-semibold tabular-nums sm:text-2xl">
         {typeof value === 'number' ? value.toLocaleString() : value}
       </p>
 

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 
 import { CountUp } from '@/components/system/premium';
+import { SectionHeading } from '@/components/marketing/section-heading';
 import { arenaEvents, type ArenaEvent } from '@/lib/mock-arena';
 import { cardHover, fadeUp, stagger, viewportOnce } from '@/lib/motion';
 
@@ -64,7 +65,7 @@ const ACCENT = {
 
 export function LiveArena() {
   return (
-    <section id="arena" className="relative border-t border-white/5 py-20">
+    <section id="arena" className="relative border-t border-white/5 py-14 sm:py-20 lg:py-24">
       {/* The arena is lit from below, so it reads as a floor rather than a page. */}
       <div
         aria-hidden
@@ -72,31 +73,26 @@ export function LiveArena() {
       />
 
       <div className="container relative space-y-10">
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={viewportOnce}
-          className="flex flex-wrap items-end justify-between gap-4"
-        >
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neon-purple">
-              Tonight’s arena
-            </p>
-            <h2 className="text-display-md font-semibold">Four ways to change the night</h2>
-            <p className="max-w-2xl text-muted">
-              Everything here is open while the episode airs. Counts and clocks come from the
-              server — your browser never decides a result.
-            </p>
-          </div>
-
-          <Button asChild variant="secondary">
-            <Link href="/dashboard">
-              Open the arena
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-          </Button>
-        </motion.div>
+        <SectionHeading
+          eyebrow="Tonight’s arena"
+          title="Four ways to change the night"
+          kicker={
+            <>
+              Live decisions.
+              <br />
+              Real audience impact.
+            </>
+          }
+          tone="purple"
+          action={
+            <Button asChild size="lg">
+              <Link href="/dashboard">
+                Enter tonight
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
+            </Button>
+          }
+        />
 
         <motion.ul
           variants={stagger}
@@ -167,12 +163,9 @@ function ArenaCard({ event }: { event: ArenaEvent }) {
           </span>
         </div>
 
-        <div className="mt-4 space-y-1.5">
-          <h3 className="text-base font-semibold leading-tight">{event.title}</h3>
-          <p className="text-sm leading-relaxed text-muted">{event.subtitle}</p>
-        </div>
+        <h3 className="mt-4 text-lg font-semibold leading-tight text-balance">{event.title}</h3>
 
-        <p className="mt-3 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2 text-xs text-muted">
+        <p className="mt-2.5 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2 text-xs text-muted">
           {event.standing}
         </p>
 

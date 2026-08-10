@@ -63,7 +63,7 @@ export function PredictionsScreen() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Prediction Game"
+        title="Make Your Prediction"
         description="Call what happens next. One prediction per question, locked once you submit."
         action={
           <Tabs value={scope} onValueChange={(value) => setScope(value as Scope)}>

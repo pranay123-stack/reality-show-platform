@@ -176,7 +176,9 @@ export function EngagementStat({
   className?: string;
 }) {
   return (
-    <span className={cn('inline-flex items-center gap-2 text-sm text-muted', className)}>
+    <span
+      className={cn('inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-sm text-muted', className)}
+    >
       {icon}
       <CountUp value={value} className="font-semibold text-foreground" />
       {label}

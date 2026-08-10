@@ -15,6 +15,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 
 import { FeatureGrid } from '@/components/marketing/feature-grid';
+import { SECTION_PADDING, SectionHeading } from '@/components/marketing/section-heading';
 import { EngagementStat, EpisodeBadge, LiveBadge } from '@/components/system/premium';
 import { fadeIn, fadeUp, stagger, wordFade, wordReveal, wordStagger } from '@/lib/motion';
 
@@ -35,7 +36,7 @@ export function Hero() {
     <section className="relative overflow-hidden">
       <HeroAtmosphere />
 
-      <div className="container relative grid gap-12 py-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-28">
+      <div className="container relative grid gap-10 py-16 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-28">
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -49,18 +50,18 @@ export function Hero() {
 
           <HeroTitle />
 
-          <motion.p variants={fadeUp} className="max-w-xl text-lg text-muted">
-            {env.appName} is the second screen for a live reality show. Predict what happens next,
-            vote in polls while they run, write the challenges the house attempts, and watch the
-            contestant heat meter move in real time.
+          <motion.p variants={fadeUp} className="max-w-md text-xl leading-snug text-muted">
+            Predict it. Vote it. Change it.
+            <br />
+            While it airs.
           </motion.p>
 
           <motion.div variants={fadeUp} className="flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
-              <Link href="/signup">Create a free account</Link>
+              <Link href="/signup">Join the game</Link>
             </Button>
             <Button asChild size="lg" variant="secondary">
-              <Link href="#how-it-works">See how it works</Link>
+              <Link href="#arena">Enter tonight</Link>
             </Button>
           </motion.div>
 
@@ -82,8 +83,7 @@ export function Hero() {
           </motion.div>
 
           <motion.p variants={fadeUp} className="text-sm text-muted">
-            Free to play. No payments, no betting, no cash prizes — points are for entertainment
-            only.
+            Free. No betting, no cash prizes.
           </motion.p>
         </motion.div>
 
@@ -110,7 +110,7 @@ function HeroTitle() {
 
   if (reduced) {
     return (
-      <h1 className="text-display-xl font-semibold">
+      <h1 className="text-display font-semibold">
         Stop watching the show.
         <br />
         <span className="bg-gradient-to-r from-primary via-neon-purple to-accent bg-clip-text text-transparent">
@@ -121,7 +121,7 @@ function HeroTitle() {
   }
 
   return (
-    <h1 className="text-display-xl font-semibold">
+    <h1 className="text-display font-semibold">
       <span className="sr-only">Stop watching the show. Start playing it.</span>
 
       <motion.span aria-hidden variants={wordStagger} className="block">
@@ -243,12 +243,19 @@ function LivePreviewPanel() {
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="border-t border-border/60 py-20">
+    <section id="how-it-works" className={`border-t border-white/5 ${SECTION_PADDING}`}>
       <div className="container space-y-10">
         <SectionHeading
           eyebrow="How it works"
-          title="Four steps, then you are playing"
-          copy="No download, no payment, no draft. Sign up, confirm your email and take part while the episode airs."
+          title="Four steps to the floor"
+          kicker={
+            <>
+              No download. No payment.
+              <br />
+              Just turn up.
+            </>
+          }
+          tone="cyan"
         />
 
         <ol className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -273,12 +280,19 @@ export function HowItWorks() {
 
 export function InteractiveFeatures() {
   return (
-    <section id="features" className="border-t border-border/60 py-20">
+    <section id="features" className={`border-t border-white/5 ${SECTION_PADDING}`}>
       <div className="container space-y-10">
         <SectionHeading
-          eyebrow="Interactive features"
-          title="Eight ways to take part"
-          copy="Every one of them is server-authoritative: your browser sends an intent, the server decides the result."
+          eyebrow="Eight ways in"
+          title="Pick your move"
+          kicker={
+            <>
+              Every result decided on the server.
+              <br />
+              Never in your browser.
+            </>
+          }
+          tone="purple"
         />
 
         <FeatureGrid />
@@ -297,12 +311,19 @@ export function InteractiveFeatures() {
 
 export function Rewards() {
   return (
-    <section id="rewards" className="border-t border-border/60 py-20">
+    <section id="rewards" className={`border-t border-white/5 ${SECTION_PADDING}`}>
       <div className="container space-y-10">
         <SectionHeading
           eyebrow="Points & rewards"
-          title="Earned by taking part, never bought"
-          copy="Every point is written to an auditable ledger. Nothing here is purchasable, withdrawable or a wager."
+          title="Play more. Climb higher."
+          kicker={
+            <>
+              Earned, never bought.
+              <br />
+              Nothing here is a wager.
+            </>
+          }
+          tone="gold"
         />
 
         <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
@@ -355,12 +376,19 @@ export function Rewards() {
 
 export function LeaderboardPreview() {
   return (
-    <section id="leaderboard" className="border-t border-border/60 py-20">
+    <section id="leaderboard" className={`border-t border-white/5 ${SECTION_PADDING}`}>
       <div className="container space-y-10">
         <SectionHeading
           eyebrow="Leaderboards"
-          title="Daily, weekly, season"
-          copy="Ranked purely on participation points. This ranks viewers — contestants have their own heat meter and the two are never mixed."
+          title="Daily. Weekly. Season."
+          kicker={
+            <>
+              Ranked on what you played.
+              <br />
+              Viewers only — the house has its own heat.
+            </>
+          }
+          tone="cyan"
         />
 
         <Card className="mx-auto max-w-2xl p-3">
@@ -386,22 +414,21 @@ export function LeaderboardPreview() {
 
 export function ClosingCta() {
   return (
-    <section className="border-t border-border/60 py-20">
+    <section className={`border-t border-white/5 ${SECTION_PADDING}`}>
       <div className="container">
         <Card className="relative overflow-hidden p-10 text-center">
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-stage opacity-70" />
           <div className="relative mx-auto max-w-2xl space-y-6">
-            <h2 className="text-display-lg font-semibold">The next episode starts without you.</h2>
-            <p className="text-muted">
-              Create an account in under a minute and take part in tonight&rsquo;s polls,
-              predictions and nominations.
-            </p>
+            <h2 className="text-display font-semibold text-balance">
+              Tonight starts without you.
+            </h2>
+            <p className="text-lg text-muted">One minute to join. Then it is your show too.</p>
             <div className="flex flex-col justify-center gap-3 sm:flex-row">
               <Button asChild size="lg">
-                <Link href="/signup">Join free</Link>
+                <Link href="/signup">Join the game</Link>
               </Button>
               <Button asChild size="lg" variant="secondary">
-                <Link href="/login">I already have an account</Link>
+                <Link href="/login">I already play</Link>
               </Button>
             </div>
           </div>
@@ -476,20 +503,3 @@ export function SiteFooter() {
 
 // ---------------------------------------------------------------------------
 
-function SectionHeading({
-  eyebrow,
-  title,
-  copy,
-}: {
-  eyebrow: string;
-  title: string;
-  copy: string;
-}) {
-  return (
-    <div className="max-w-2xl space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-widest text-primary">{eyebrow}</p>
-      <h2 className="text-display-md font-semibold">{title}</h2>
-      <p className="text-muted">{copy}</p>
-    </div>
-  );
-}

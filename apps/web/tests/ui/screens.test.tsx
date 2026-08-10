@@ -38,13 +38,13 @@ interface ScreenCase {
 
 const SCREENS: ScreenCase[] = [
   { name: 'polls', heading: /Live Polls/i, element: () => <PollsScreen /> },
-  { name: 'predictions', heading: /Prediction Game/i, element: () => <PredictionsScreen /> },
-  { name: 'challenges', heading: /Audience Challenges/i, element: () => <ChallengesScreen /> },
-  { name: 'perspectives', heading: /Audience Perspective/i, element: () => <PerspectivesScreen /> },
-  { name: 'kitchen', heading: /Kitchen Control/i, element: () => <KitchenScreen /> },
+  { name: 'predictions', heading: /Make Your Prediction/i, element: () => <PredictionsScreen /> },
+  { name: 'challenges', heading: /Change The House/i, element: () => <ChallengesScreen /> },
+  { name: 'perspectives', heading: /Pick A Side/i, element: () => <PerspectivesScreen /> },
+  { name: 'kitchen', heading: /Kitchen Battle/i, element: () => <KitchenScreen /> },
   {
     name: 'weekend',
-    heading: /Weekend Participation/i,
+    heading: /Weekend Spotlight/i,
     element: () => <WeekendScreen />,
     // `null` is the real "no round is open" answer, not a missing fixture.
     routes: { '/weekend/current': null },

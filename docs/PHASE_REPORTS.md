@@ -1999,3 +1999,87 @@ unchanged.
 | Pages not owning exactly one `h1` | **0** |
 | Interactive targets under 24 px | **0** |
 | Uncaught JavaScript errors | **0** |
+
+---
+
+## Entertainment typography pass
+
+A third presentation-only pass. The diagnosis was right: the page read like an
+article. Every section argued its case in a paragraph, and the type gave those
+paragraphs the same weight as everything else.
+
+### Three tiers, and nothing between them
+
+The page had drifted into four display sizes used interchangeably, which is why
+every section spoke at the same volume.
+
+| Tier | Range | Used for |
+| --- | --- | --- |
+| `display` | 40 → 96 px | The hero, and the closing line. Nothing else. |
+| `headline` | 32 → 48 px | Section openers. |
+| body | ≤ 18 px | Everything else. |
+
+Measured in a production browser: 92/53/40 px display and 48/32/32 px headlines
+at 1440/834/390. The application shell keeps the old `display-md` for its page
+titles, which sit above dense tables and would be absurd at 48 px.
+
+### The copy did the real work
+
+`SectionHeading` takes a `kicker` of two lines and gives it `max-w-md`. There is
+nowhere to put a paragraph, which is the point.
+
+| Before | After |
+| --- | --- |
+| "Everything here is open while the episode airs. Counts and clocks come from the server — your browser never decides a result." | "Live decisions. / Real audience impact." |
+| "Heat is measured on the server from votes, reactions, engagement and momentum. It moves because the audience moved…" | "Heat moves because the audience moved. / Measured, never edited." |
+| "Points come from taking part, not from spending. Your level, your streak and your place on the board are all derived from one auditable ledger…" | "Points for showing up. / A rank nobody can buy." |
+
+The technical claims are not lost — they are made on the pages where somebody
+has chosen to care.
+
+**One paragraph was deliberately left long.** The footer disclaimer names the
+contestants as fictional and the points as having no monetary value. Cutting a
+disclaimer down to something punchy would trade an honest statement for a
+rhythm, which is not a trade worth making.
+
+### The product learned to talk like a show
+
+Renamed everywhere — landing page, navigation, page titles, metadata, and the
+tests that assert them — so the two surfaces do not disagree:
+
+Prediction Game → **Make Your Prediction** · Audience Challenges → **Change The
+House** · Contestant Heat Meter → **House Heat** · Audience Perspective → **Pick
+A Side** · Kitchen Control → **Kitchen Battle** · Weekend Participation →
+**Weekend Spotlight** · Nomination & Eviction → **Nomination Night**
+
+CTAs followed: *Join the game*, *Enter tonight*, *Make your move*, *Vote now*,
+*Take the spotlight*.
+
+### EntertainmentCard
+
+The previous card led with a name and a description, then showed the interesting
+part underneath — the shape of a documentation entry. A viewer glancing at a
+second screen wants, in order: is this live, how many people are in, what am I
+being asked, how do I answer. So the structure is fixed and the description is
+gone, replaced by the *question the feature actually asks*, which does the same
+explanatory work in six words instead of twenty.
+
+### Spacing and one collision
+
+Section padding was 80 px at every width — airy on a laptop, a lot of scrolling
+on a phone. Now 56 / 80 / 96 px.
+
+The audit for text collisions found one, and it predated this pass: `StatCard`
+rendered its value at 24 px, and a five-figure count in a three-column grid
+overflowed its own card at 390 px. It now steps down to 20 px below `sm`.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| Page/viewport combinations | **96** (32 routes × 1440 / 834 / 390) |
+| Maximum horizontal overflow | **0 px** |
+| Text overflowing its own box | **0** |
+| Pages not owning exactly one `h1` | **0** |
+| Interactive targets under 24 px | **0** |
+| Uncaught JavaScript errors | **0** |

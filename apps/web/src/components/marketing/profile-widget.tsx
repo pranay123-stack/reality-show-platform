@@ -27,7 +27,7 @@ export function ProfileWidget() {
   const rewardProgress = (sampleProfile.rewardsUnlocked / sampleProfile.rewardsTotal) * 100;
 
   return (
-    <section id="profile" className="relative border-t border-white/5 py-20">
+    <section id="profile" className="relative border-t border-white/5 py-14 sm:py-20 lg:py-24">
       <div className="container">
         <motion.div
           variants={stagger}
@@ -36,27 +36,23 @@ export function ProfileWidget() {
           viewport={viewportOnce}
           className="grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]"
         >
-          <motion.div variants={fadeUp} className="space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neon-gold">
-              Your reality profile
-            </p>
-            <h2 className="text-display-md font-semibold">
-              Everything you do on a show night adds up
-            </h2>
-            <p className="max-w-xl text-muted">
-              Points come from taking part, not from spending. Your level, your streak and your
-              place on the board are all derived from one auditable ledger — so a rank is something
-              you earned, and nothing you buy can move it.
-            </p>
+          <motion.div variants={fadeUp} className="space-y-6">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-neon-gold">
+                Your reality profile
+              </p>
+              <h2 className="text-headline font-semibold text-balance">Play more. Climb higher.</h2>
+              <p className="max-w-md text-lg leading-snug text-muted">
+                Points for showing up.
+                <br />
+                A rank nobody can buy.
+              </p>
+            </div>
 
-            <ul className="space-y-2 text-sm text-muted">
-              {[
-                'Points for every prediction, vote, challenge and question.',
-                'Levels that only ever go up — redeeming a reward never costs you one.',
-                'Daily, weekly and season boards, plus a friends board.',
-              ].map((line) => (
-                <li key={line} className="flex gap-2.5">
-                  <span aria-hidden className="mt-2 h-1 w-1 shrink-0 rounded-full bg-neon-gold" />
+            <ul className="space-y-2 text-base text-muted">
+              {['Every vote counts', 'Levels only go up', 'Daily, weekly, season'].map((line) => (
+                <li key={line} className="flex items-center gap-2.5">
+                  <span aria-hidden className="h-1 w-1 shrink-0 rounded-full bg-neon-gold" />
                   {line}
                 </li>
               ))}
@@ -64,7 +60,7 @@ export function ProfileWidget() {
 
             <Button asChild size="lg">
               <Link href="/signup">
-                Start your profile
+                Take the spotlight
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
             </Button>
@@ -131,7 +127,7 @@ export function ProfileWidget() {
                   />
                 </div>
 
-                <p className="text-center text-[11px] text-muted">
+                <p className="text-center text-xs text-muted">
                   A fictional example of a profile a month into a season.
                 </p>
               </div>
@@ -158,7 +154,7 @@ function Stat({
 }) {
   return (
     <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
-      <dt className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.1em] text-muted">
+      <dt className="flex items-center gap-1.5 text-xs uppercase tracking-[0.1em] text-muted">
         {icon}
         {label}
       </dt>
@@ -166,7 +162,7 @@ function Stat({
         {prefix}
         <CountUp value={value} />
       </dd>
-      {meta && <p className="text-[11px] text-muted">{meta}</p>}
+      {meta && <p className="text-xs text-muted">{meta}</p>}
     </div>
   );
 }

@@ -43,19 +43,19 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Play',
     items: [
-      { href: '/predictions', label: 'Prediction Game', shortLabel: 'Predict', icon: ListChecks, moduleKey: 'predictions' },
+      { href: '/predictions', label: 'Make Your Prediction', shortLabel: 'Predict', icon: ListChecks, moduleKey: 'predictions' },
       { href: '/polls', label: 'Live Polls', shortLabel: 'Polls', icon: Radio, moduleKey: 'polls' },
-      { href: '/challenges', label: 'Audience Challenges', shortLabel: 'Challenges', icon: MessagesSquare, moduleKey: 'challenges' },
-      { href: '/perspectives', label: 'Audience Perspective', shortLabel: 'Perspective', icon: Scale, moduleKey: 'perspectives' },
+      { href: '/challenges', label: 'Change The House', shortLabel: 'Challenges', icon: MessagesSquare, moduleKey: 'challenges' },
+      { href: '/perspectives', label: 'Pick A Side', shortLabel: 'Perspective', icon: Scale, moduleKey: 'perspectives' },
     ],
   },
   {
     label: 'The house',
     items: [
-      { href: '/contestants', label: 'Contestant Heat', shortLabel: 'Heat', icon: Flame },
-      { href: '/nominations', label: 'Nomination & Eviction', shortLabel: 'Rounds', icon: Users, moduleKey: 'nominations' },
-      { href: '/kitchen', label: 'Kitchen Control', shortLabel: 'Kitchen', icon: UtensilsCrossed, moduleKey: 'kitchen' },
-      { href: '/weekend', label: 'Weekend Participation', shortLabel: 'Weekend', icon: CalendarHeart, moduleKey: 'weekend' },
+      { href: '/contestants', label: 'House Heat', shortLabel: 'Heat', icon: Flame },
+      { href: '/nominations', label: 'Nomination Night', shortLabel: 'Rounds', icon: Users, moduleKey: 'nominations' },
+      { href: '/kitchen', label: 'Kitchen Battle', shortLabel: 'Kitchen', icon: UtensilsCrossed, moduleKey: 'kitchen' },
+      { href: '/weekend', label: 'Weekend Spotlight', shortLabel: 'Weekend', icon: CalendarHeart, moduleKey: 'weekend' },
     ],
   },
   {

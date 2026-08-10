@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Flame, TrendingDown, TrendingUp } from 'lucide-react';
 
 import { CountUp } from '@/components/system/premium';
+import { SectionHeading } from '@/components/marketing/section-heading';
 import { houseSpotlight, type SpotlightContestant } from '@/lib/mock-arena';
 import { cardHover, fadeUp, stagger, viewportOnce } from '@/lib/motion';
 
@@ -23,29 +24,25 @@ import { cardHover, fadeUp, stagger, viewportOnce } from '@/lib/motion';
  */
 export function HouseSpotlight() {
   return (
-    <section id="contestants" className="relative border-t border-white/5 py-20">
+    <section id="contestants" className="relative border-t border-white/5 py-14 sm:py-20 lg:py-24">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,hsl(var(--neon-gold)/0.09),transparent_70%)]"
       />
 
       <div className="container relative space-y-10">
-        <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={viewportOnce}
-          className="space-y-2"
-        >
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neon-gold">
-            House trending now
-          </p>
-          <h2 className="text-display-md font-semibold">Who the audience cannot stop watching</h2>
-          <p className="max-w-2xl text-muted">
-            Heat is measured on the server from votes, reactions, engagement and momentum. It moves
-            because the audience moved, and it is recomputed — never edited.
-          </p>
-        </motion.div>
+        <SectionHeading
+          eyebrow="House trending now"
+          title="See who owns the spotlight."
+          kicker={
+            <>
+              Heat moves because the audience moved.
+              <br />
+              Measured, never edited.
+            </>
+          }
+          tone="gold"
+        />
 
         <motion.ul
           variants={stagger}
@@ -142,7 +139,7 @@ function SpotlightCard({ contestant, rank }: { contestant: SpotlightContestant; 
               />
               <div className="h-full flex-1 bg-neon-pink/50" />
             </div>
-            <p className="flex justify-between text-[11px] text-muted">
+            <p className="flex justify-between text-xs text-muted">
               <span>{contestant.sentiment}% on side</span>
               <span>{100 - contestant.sentiment}% against</span>
             </p>

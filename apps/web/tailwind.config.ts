@@ -83,7 +83,29 @@ const config: Config = {
         display: ['var(--font-display)', 'var(--font-sans)', 'ui-sans-serif', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'monospace'],
       },
+      /*
+        Three tiers and nothing between them.
+        
+        The page had drifted into using four display sizes interchangeably,
+        which is why every section read at the same volume — and why it felt
+        like an article rather than a broadcast. `display` is for the two or
+        three moments that carry the whole page; `headline` opens a section;
+        everything else is body text, capped at 18px.
+
+        All three are fluid, so the mobile and desktop ends of each range are
+        chosen deliberately rather than falling out of a breakpoint.
+      */
       fontSize: {
+        /** Hero and section-hero only. 40px → 96px. */
+        display: ['clamp(2.5rem, 6.4vw, 6rem)', { lineHeight: '0.98', letterSpacing: '-0.035em' }],
+        /** Section openers. 32px → 48px. */
+        headline: ['clamp(2rem, 3.4vw, 3rem)', { lineHeight: '1.05', letterSpacing: '-0.025em' }],
+
+        /*
+          Kept for the application shell, whose page titles sit above dense
+          tables and would be absurd at 48px. The marketing surface does not
+          use these.
+        */
         'display-xl': ['clamp(2.75rem, 6vw, 4.5rem)', { lineHeight: '1.03', letterSpacing: '-0.03em' }],
         'display-lg': ['clamp(2.25rem, 4.5vw, 3.25rem)', { lineHeight: '1.06', letterSpacing: '-0.025em' }],
         'display-md': ['clamp(1.75rem, 3vw, 2.25rem)', { lineHeight: '1.15', letterSpacing: '-0.02em' }],

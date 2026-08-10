@@ -170,7 +170,7 @@ interface FeatureCardConfig {
 const FEATURE_CARDS: FeatureCardConfig[] = [
   {
     href: '/predictions',
-    title: 'Prediction Game',
+    title: 'Make Your Prediction',
     describe: ({ modules }) => ({
       line:
         modules.predictions.open === 0
@@ -182,7 +182,7 @@ const FEATURE_CARDS: FeatureCardConfig[] = [
   },
   {
     href: '/challenges',
-    title: 'Audience Challenges',
+    title: 'Change The House',
     describe: ({ modules }) => ({
       line:
         modules.challenges.votingOpen === 0
@@ -193,7 +193,7 @@ const FEATURE_CARDS: FeatureCardConfig[] = [
   },
   {
     href: '/contestants',
-    title: 'Contestant Heat Meter',
+    title: 'House Heat',
     describe: ({ hottestContestants }) => ({
       line: hottestContestants[0]
         ? `${hottestContestants[0].displayName} is hottest right now`
@@ -202,7 +202,7 @@ const FEATURE_CARDS: FeatureCardConfig[] = [
   },
   {
     href: '/perspectives',
-    title: 'Audience Perspective',
+    title: 'Pick A Side',
     describe: ({ modules }) => ({
       line:
         modules.perspectives.open === 0
@@ -225,7 +225,7 @@ const FEATURE_CARDS: FeatureCardConfig[] = [
   },
   {
     href: '/nominations',
-    title: 'Nomination & Eviction',
+    title: 'Nomination Night',
     describe: ({ modules }) => {
       if (modules.nominations.open) {
         return {
@@ -246,7 +246,7 @@ const FEATURE_CARDS: FeatureCardConfig[] = [
   },
   {
     href: '/kitchen',
-    title: 'Kitchen Control',
+    title: 'Kitchen Battle',
     describe: ({ modules, live }) => ({
       line:
         modules.kitchen.open === 0
@@ -257,7 +257,7 @@ const FEATURE_CARDS: FeatureCardConfig[] = [
   },
   {
     href: '/weekend',
-    title: 'Weekend Participation',
+    title: 'Weekend Spotlight',
     describe: ({ modules }) => ({
       line: !modules.weekend.open
         ? 'Nothing open this week'

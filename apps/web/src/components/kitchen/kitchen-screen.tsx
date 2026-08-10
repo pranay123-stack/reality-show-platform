@@ -25,7 +25,7 @@ export function KitchenScreen() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Kitchen Control"
+        title="Kitchen Battle"
         description="Help decide what the house eats — within the budget production has set."
         action={
           <Tabs value={scope} onValueChange={(value) => setScope(value as KitchenScope)}>

@@ -37,7 +37,7 @@ export function ChallengesScreen() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Audience Challenges"
+        title="Change The House"
         description="Write a task for the house. The community votes, moderators check it, producers decide what actually runs."
         action={
           <Button asChild disabled={!canParticipate}>

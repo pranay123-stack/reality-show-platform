@@ -1,6 +1,6 @@
 # Build status
 
-**Last updated:** after the visual experience pass (post-Phase 20).
+**Last updated:** after the entertainment typography pass (post-Phase 20).
 
 Everything below was executed and observed, not assumed. Per-phase detail is in
 [`PHASE_REPORTS.md`](PHASE_REPORTS.md); the design is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -110,6 +110,16 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 - **Do not run two test suites at once.** They truncate the same tables and destroy each other; a
   concurrent pair produced 63 phantom failures that a single clean run does not reproduce.
 - No 404 routes remain in the navigation.
+- **The marketing surface has three type tiers and no fourth.** `text-display` (40→96px) for the
+  hero and the closing line, `text-headline` (32→48px) for section openers, everything else ≤18px.
+  `display-xl/lg/md` are kept only for the application shell, whose page titles sit above dense
+  tables.
+- **`SectionHeading` takes a two-line `kicker`, not a paragraph.** `max-w-md` and the type size
+  make a third line obvious in review. If a section needs to explain itself at length, that belongs
+  on the page it links to.
+- **Feature names are the show's, not the schema's** — Make Your Prediction, Change The House,
+  House Heat, Pick A Side, Kitchen Battle, Weekend Spotlight, Nomination Night. Route paths and
+  module names are unchanged; only what a person reads.
 - **The cinematic background is scenery.** Four `fixed`, `pointer-events-none`, `aria-hidden`
   layers in the root layout. It must never intercept a click, appear in the accessibility tree, or
   widen the page — which is why it is `fixed`, not absolutely positioned in a scroll container.

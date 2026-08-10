@@ -23,7 +23,7 @@ export function ContestantsScreen() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-display-md font-semibold">Contestant Heat Meter</h1>
+          <h1 className="text-display-md font-semibold">House Heat</h1>
           <p className="text-muted">
             How much attention each contestant is getting right now, computed on the server.
           </p>
