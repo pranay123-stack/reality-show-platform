@@ -1,6 +1,6 @@
 # Build status
 
-**Last updated:** after the entertainment typography pass (post-Phase 20).
+**Last updated:** after the cinematic experience layer (post-Phase 20).
 
 Everything below was executed and observed, not assumed. Per-phase detail is in
 [`PHASE_REPORTS.md`](PHASE_REPORTS.md); the design is in [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -117,6 +117,15 @@ Everything below was executed and observed, not assumed. Per-phase detail is in
 - **`SectionHeading` takes a two-line `kicker`, not a paragraph.** `max-w-md` and the type size
   make a third line obvious in review. If a section needs to explain itself at length, that belongs
   on the page it links to.
+- **A cold build needs network access.** The display face comes from `next/font/google`, which
+  downloads and self-hosts at build time. Runtime is unaffected — no third-party request, no layout
+  shift — but `pnpm build` on a clean cache will fail offline. This reverses the Phase 4 note about
+  hermetic builds, deliberately.
+- **Titles are Anton, body is the system stack.** Two personalities, not five. `.text-display` and
+  `.text-headline` pick the face up automatically from `globals.css`, so no call site has to
+  remember it and none can forget it.
+- **Only the arena cards float.** A room where everything drifts is a room where nothing reads as
+  alive. The glow border and light sweep are marketing-only and never reach the console.
 - **Feature names are the show's, not the schema's** — Make Your Prediction, Change The House,
   House Heat, Pick A Side, Kitchen Battle, Weekend Spotlight, Nomination Night. Route paths and
   module names are unchanged; only what a person reads.

@@ -7,12 +7,13 @@ import { cn } from '@reality/ui';
 /**
  * The room the product sits in.
  *
- * Four layers, painted once behind everything and never interacted with:
+ * Five layers, painted once behind everything and never interacted with:
  *
  *   1. a deep gradient base — black, through deep purple, into midnight blue
- *   2. ambient glow blobs drifting on long, deliberately unequal periods
+ *   2. an animated mesh: three wide colour fields on long, unequal orbits
  *   3. star dust, low-opacity and slow
  *   4. a broadcast bloom at the top, where the hero sits
+ *   5. a vignette, so the corners fall away and the centre reads first
  *
  * Everything here is `fixed`, `pointer-events-none` and `aria-hidden`. It is
  * scenery: it must never intercept a click, never appear in the accessibility
@@ -20,24 +21,30 @@ import { cn } from '@reality/ui';
  * rather than absolutely positioned inside a scrolling container.
  *
  * On contrast: the layers are tuned so the darkest ambient point stays below
- * the surface colour the cards sit on. Text contrast is unchanged, because
- * every text surface is a card or the base foreground, and neither reads
- * through to this.
+ * the surface colour the cards sit on. Every text surface is a card or the base
+ * foreground, and neither reads through to this.
  */
 
-/** A blob: position, size, hue and which drift period it rides. */
-const BLOBS = [
+/**
+ * The mesh.
+ *
+ * Three fields rather than one gradient, each on its own orbit and its own
+ * period (24s, 28s, 32s). Equal periods would make the whole field pulse in
+ * step, which reads as a loading animation rather than atmosphere — the same
+ * mistake the drifting blobs avoided, at a larger scale.
+ */
+const MESH = [
   {
-    className: 'left-[-12%] top-[-8%] h-[46rem] w-[46rem] animate-drift-a',
-    tint: 'hsl(var(--neon-pink) / 0.16)',
+    className: 'left-[-25%] top-[-20%] h-[85vh] w-[85vw] animate-mesh-a',
+    tint: 'hsl(var(--neon-pink) / 0.22)',
   },
   {
-    className: 'right-[-16%] top-[12%] h-[40rem] w-[40rem] animate-drift-b',
-    tint: 'hsl(var(--neon-cyan) / 0.12)',
+    className: 'right-[-25%] top-[-5%] h-[80vh] w-[80vw] animate-mesh-b',
+    tint: 'hsl(var(--neon-cyan) / 0.16)',
   },
   {
-    className: 'bottom-[-18%] left-[22%] h-[52rem] w-[52rem] animate-drift-c',
-    tint: 'hsl(var(--neon-purple) / 0.14)',
+    className: 'bottom-[-30%] left-[10%] h-[95vh] w-[95vw] animate-mesh-c',
+    tint: 'hsl(var(--neon-purple) / 0.24)',
   },
 ] as const;
 
@@ -49,13 +56,13 @@ export function CinematicBackground() {
       {/* 1 — the base gradient. */}
       <div className="absolute inset-0 bg-cinema" />
 
-      {/* 2 — ambient glow. `blur-3xl` on a radial gradient is far cheaper than
-          a real blur filter over content, because nothing is behind it. */}
-      {BLOBS.map((blob) => (
+      {/* 2 — the mesh. `blur-3xl` over a radial gradient is far cheaper than a
+          real blur filter over content, because nothing is behind it. */}
+      {MESH.map((field) => (
         <div
-          key={blob.className}
-          className={cn('absolute rounded-full blur-3xl will-change-transform', blob.className)}
-          style={{ background: `radial-gradient(circle, ${blob.tint} 0%, transparent 68%)` }}
+          key={field.className}
+          className={cn('absolute rounded-full blur-3xl will-change-transform', field.className)}
+          style={{ background: `radial-gradient(circle, ${field.tint} 0%, transparent 70%)` }}
         />
       ))}
 
@@ -71,8 +78,8 @@ export function CinematicBackground() {
       {/* 4 — the broadcast bloom over the hero. */}
       <div className="absolute inset-x-0 top-0 h-[42rem] bg-grid-fade opacity-70" />
 
-      {/* A vignette, so the corners fall away and the centre reads first. */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,hsl(240_14%_3%_/_0.55)_100%)]" />
+      {/* 5 — vignette. */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,hsl(240_14%_3%_/_0.6)_100%)]" />
     </div>
   );
 }
@@ -81,8 +88,9 @@ export function CinematicBackground() {
  * How much dust to draw.
  *
  * None until mounted, so the server and the first client render agree — a
- * random field rendered on the server would mismatch and log a hydration error.
- * Fewer on a phone, where the same count costs more and shows less.
+ * random field rendered on the server would not match the client's, which is a
+ * hydration error. Fewer on a phone, where the same count costs more and shows
+ * less, and none at all for a reader who has asked for reduced motion.
  */
 function useDustCount(): number {
   const [count, setCount] = useState(0);
@@ -110,7 +118,7 @@ function StarField({ count, offset = false }: { count: number; offset?: boolean 
     const x = ((index * 3739) % 1000) / 10;
     const y = ((index * 6113) % 1000) / 10;
     const dim = index % 3 === 0;
-    return `${x}vw ${y}vh 0 ${dim ? '0px' : '0.5px'} hsl(0 0% 100% / ${dim ? 0.16 : 0.3})`;
+    return `${x}vw ${y}vh 0 ${dim ? '0px' : '0.5px'} hsl(0 0% 100% / ${dim ? 0.16 : 0.32})`;
   }).join(', ');
 
   return (

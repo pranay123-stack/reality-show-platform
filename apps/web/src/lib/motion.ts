@@ -32,6 +32,25 @@ export const fadeIn: Variants = {
 };
 
 /**
+ * A scene arriving: out of focus, then resolving.
+ *
+ * The blur is what makes a section read as a *cut* rather than a scroll. It is
+ * deliberately small — 6px, over half a second — because anything more looks
+ * like a rendering fault before it looks like an effect, and because animating
+ * `filter` is the most expensive thing on this page. It is used on section
+ * openers only, never on a list of eight cards.
+ */
+export const sceneReveal: Variants = {
+  hidden: { opacity: 0, y: 24, filter: 'blur(6px)' },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: { duration: 0.65, ease: EASE_OUT },
+  },
+};
+
+/**
  * A container whose children arrive in sequence.
  *
  * 60 ms is the gap that reads as "these belong together and arrived in order".
@@ -44,13 +63,21 @@ export const stagger: Variants = {
   },
 };
 
-/** Words revealing one at a time, for the hero headline only. */
-export const wordReveal: Variants = {
-  hidden: { opacity: 0, y: '0.4em' },
+/**
+ * A title card word: out of focus and slightly oversized, resolving into place.
+ *
+ * The scale is the part that makes it read as a *title* rather than a fade —
+ * 1.06 is barely visible frame to frame but unmistakable as a settling motion,
+ * which is what a broadcast opening does.
+ */
+export const titleWord: Variants = {
+  hidden: { opacity: 0, y: '0.35em', scale: 1.06, filter: 'blur(8px)' },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.55, ease: EASE_OUT },
+    scale: 1,
+    filter: 'blur(0px)',
+    transition: { duration: 0.7, ease: EASE_OUT },
   },
 };
 

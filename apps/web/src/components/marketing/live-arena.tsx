@@ -8,6 +8,7 @@ import { useMemo } from 'react';
 
 import { CountUp } from '@/components/system/premium';
 import { SectionHeading } from '@/components/marketing/section-heading';
+import { Floating, GlowBorder, LightSweep } from '@/components/system/showcase';
 import { arenaEvents, type ArenaEvent } from '@/lib/mock-arena';
 import { cardHover, fadeUp, stagger, viewportOnce } from '@/lib/motion';
 
@@ -63,6 +64,13 @@ const ACCENT = {
   gold: 'from-neon-gold/70',
 } as const;
 
+const TINT = {
+  pink: 'hsl(var(--neon-pink) / 0.55)',
+  cyan: 'hsl(var(--neon-cyan) / 0.55)',
+  purple: 'hsl(var(--neon-purple) / 0.55)',
+  gold: 'hsl(var(--neon-gold) / 0.55)',
+} as const;
+
 export function LiveArena() {
   return (
     <section id="arena" className="relative border-t border-white/5 py-14 sm:py-20 lg:py-24">
@@ -74,8 +82,8 @@ export function LiveArena() {
 
       <div className="container relative space-y-10">
         <SectionHeading
-          eyebrow="Tonight’s arena"
-          title="Four ways to change the night"
+          eyebrow="On air now"
+          title="Tonight's arena"
           kicker={
             <>
               Live decisions.
@@ -101,9 +109,16 @@ export function LiveArena() {
           viewport={viewportOnce}
           className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
         >
-          {arenaEvents.map((event) => (
+          {arenaEvents.map((event, index) => (
             <li key={event.key}>
-              <ArenaCard event={event} />
+              {/*
+                Only the arena drifts. These four cards are the things actually
+                happening tonight, and a room where everything floats is a room
+                where nothing reads as alive.
+              */}
+              <Floating index={index}>
+                <ArenaCard event={event} />
+              </Floating>
             </li>
           ))}
         </motion.ul>
@@ -128,14 +143,20 @@ function ArenaCard({ event }: { event: ArenaEvent }) {
   );
 
   return (
-    <motion.div variants={fadeUp} whileHover={reduced ? undefined : cardHover} className="h-full">
+    <motion.div
+      variants={fadeUp}
+      whileHover={reduced ? undefined : cardHover}
+      className="group h-full"
+    >
       <Card className={cn('relative flex h-full flex-col overflow-hidden p-5', state.ring)}>
         <div
           aria-hidden
           className={cn('absolute inset-x-0 top-0 h-px bg-gradient-to-r to-transparent', ACCENT[event.theme])}
         />
+        <GlowBorder tint={TINT[event.theme]} />
+        <LightSweep />
 
-        <div className="flex items-start justify-between gap-3">
+        <div className="relative flex items-start justify-between gap-3">
           <span
             className={cn(
               'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]',
@@ -163,13 +184,13 @@ function ArenaCard({ event }: { event: ArenaEvent }) {
           </span>
         </div>
 
-        <h3 className="mt-4 text-lg font-semibold leading-tight text-balance">{event.title}</h3>
+        <h3 className="relative mt-4 text-lg font-semibold leading-tight text-balance">{event.title}</h3>
 
-        <p className="mt-2.5 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2 text-xs text-muted">
+        <p className="relative mt-2.5 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2 text-xs text-muted">
           {event.standing}
         </p>
 
-        <div className="mt-auto space-y-3 pt-4">
+        <div className="relative mt-auto space-y-3 pt-4">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-[10px] uppercase tracking-[0.14em] text-muted">
               {event.state === 'live' ? 'Voting closes' : 'Closes'}

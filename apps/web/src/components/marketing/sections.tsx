@@ -17,7 +17,7 @@ import { useMemo } from 'react';
 import { FeatureGrid } from '@/components/marketing/feature-grid';
 import { SECTION_PADDING, SectionHeading } from '@/components/marketing/section-heading';
 import { EngagementStat, EpisodeBadge, LiveBadge } from '@/components/system/premium';
-import { fadeIn, fadeUp, stagger, wordFade, wordReveal, wordStagger } from '@/lib/motion';
+import { fadeIn, fadeUp, stagger, titleWord, wordFade, wordStagger } from '@/lib/motion';
 
 import { env } from '@/lib/env';
 import {
@@ -57,7 +57,11 @@ export function Hero() {
           </motion.p>
 
           <motion.div variants={fadeUp} className="flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg">
+            <Button
+              asChild
+              size="lg"
+              className="shadow-[0_0_40px_-8px_hsl(var(--primary))] hover:shadow-[0_0_55px_-6px_hsl(var(--primary))]"
+            >
               <Link href="/signup">Join the game</Link>
             </Button>
             <Button asChild size="lg" variant="secondary">
@@ -110,7 +114,7 @@ function HeroTitle() {
 
   if (reduced) {
     return (
-      <h1 className="text-display font-semibold">
+      <h1 className="text-display uppercase">
         Stop watching the show.
         <br />
         <span className="bg-gradient-to-r from-primary via-neon-purple to-accent bg-clip-text text-transparent">
@@ -121,12 +125,12 @@ function HeroTitle() {
   }
 
   return (
-    <h1 className="text-display font-semibold">
+    <h1 className="text-display uppercase">
       <span className="sr-only">Stop watching the show. Start playing it.</span>
 
       <motion.span aria-hidden variants={wordStagger} className="block">
         {lead.map((word, index) => (
-          <motion.span key={`${word}-${index}`} variants={wordReveal} className="inline-block">
+          <motion.span key={`${word}-${index}`} variants={titleWord} className="inline-block">
             {word}
             {index < lead.length - 1 && '\u00A0'}
           </motion.span>
@@ -247,7 +251,7 @@ export function HowItWorks() {
       <div className="container space-y-10">
         <SectionHeading
           eyebrow="How it works"
-          title="Four steps to the floor"
+          title="Four steps in"
           kicker={
             <>
               No download. No payment.
@@ -284,7 +288,7 @@ export function InteractiveFeatures() {
       <div className="container space-y-10">
         <SectionHeading
           eyebrow="Eight ways in"
-          title="Pick your move"
+          title="Your turn"
           kicker={
             <>
               Every result decided on the server.
@@ -315,7 +319,7 @@ export function Rewards() {
       <div className="container space-y-10">
         <SectionHeading
           eyebrow="Points & rewards"
-          title="Play more. Climb higher."
+          title="Rise through the season"
           kicker={
             <>
               Earned, never bought.
@@ -380,7 +384,7 @@ export function LeaderboardPreview() {
       <div className="container space-y-10">
         <SectionHeading
           eyebrow="Leaderboards"
-          title="Daily. Weekly. Season."
+          title="Climb the board"
           kicker={
             <>
               Ranked on what you played.

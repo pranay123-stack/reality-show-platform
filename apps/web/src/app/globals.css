@@ -26,6 +26,26 @@
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
 
+  /*
+    The two display tiers carry the poster face automatically, so no call site
+    has to remember `font-display` — and none can forget it. Uppercase and a
+    little negative tracking are part of the face's job here: it is a title
+    card, not a paragraph opener.
+  */
+  .text-display,
+  .text-headline {
+    font-family: var(--font-display);
+    font-weight: 400;
+  }
+
+  /*
+    Broadcast labels: the small uppercase strings above a section or inside a
+    chip. Letter-spacing does the work that size cannot at 10-12px.
+  */
+  .label-broadcast {
+    @apply text-[11px] font-semibold uppercase tracking-[0.24em];
+  }
+
   ::selection {
     @apply bg-primary/30 text-foreground;
   }

@@ -2083,3 +2083,90 @@ overflowed its own card at 390 px. It now steps down to 20 px below `sm`.
 | Pages not owning exactly one `h1` | **0** |
 | Interactive targets under 24 px | **0** |
 | Uncaught JavaScript errors | **0** |
+
+---
+
+## Cinematic experience layer
+
+A fourth presentation-only pass, and the one that required reversing an earlier
+decision on purpose.
+
+### A display face, and why the old reasoning was overturned
+
+Phase 4 chose system stacks only, on the reasoning that no webfont means a
+hermetic build and no layout shift. That reasoning still holds for body text,
+and body text is still on the system stack. But a system stack cannot produce a
+television title — that is not a matter of size or weight, it is what the
+letterforms are for.
+
+The page now sets its two display tiers in **Anton**, a condensed poster face,
+supplied by `next/font/google`. The trade is narrower than the original comment
+implies:
+
+| | Before | After |
+| --- | --- | --- |
+| Runtime request | none | none — `next/font` self-hosts the file |
+| Layout shift | none | none — a metrics-adjusted local fallback is generated |
+| Build | offline | needs network on a cold cache |
+
+So what actually changed is the build's network requirement. That is worth a
+headline that announces something rather than labels it, and the change is
+recorded here rather than left for someone to find in a diff.
+
+Body, cards, navigation and stats stay on the system stack. Two personalities,
+not five.
+
+### The background became a mesh
+
+Three wide colour fields on their own orbits at 24, 28 and 32 seconds. The
+unequal periods are the whole point — matched periods make the field pulse in
+step, which reads as a loading animation rather than atmosphere. Same mistake
+the drifting blobs avoided in the first visual pass, at a larger scale.
+
+### Scenes rather than scroll
+
+`sceneReveal` adds a blur that resolves as a section arrives, which is what
+makes it read as a cut. Deliberately small — 6px over 0.65s — because anything
+more looks like a rendering fault before it looks like an effect, and because
+`filter` is the most expensive thing being animated on the page. Section openers
+only; never a grid of eight cards.
+
+The hero headline got its own variant: out of focus and 6% oversized, settling
+into place. The scale is what distinguishes a title card from a fade.
+
+### Card effects, and where they stop
+
+Three new pieces in `system/showcase.tsx`, all pure CSS on the compositor:
+
+- **`GlowBorder`** — a masked gradient ring that fades in on hover. Animates
+  opacity only, so no repaint.
+- **`LightSweep`** — one light crossing the card, on hover. Not on a timer: a
+  sweep that runs by itself is a casino, not a broadcast.
+- **`SignalBars`** — three bars rising out of step, replacing the pulsing dot on
+  genuinely live cards.
+
+Floating is applied to the four arena cards and nowhere else. A room where
+everything drifts is a room where nothing reads as alive.
+
+None of these are in the application shell, where a light sweeping across a data
+table would be an irritation rather than a flourish.
+
+### Headings
+
+"Four ways to change the night" → **TONIGHT'S ARENA**. "See who owns the
+spotlight" → **THE HOUSE IS MOVING**. "Pick your move" → **YOUR TURN**. "Play
+more. Climb higher." → **RISE THROUGH THE SEASON**.
+
+### Verification
+
+Measured in a production browser, at 1440 / 834 / 390:
+
+| Check | Result |
+| --- | --- |
+| Display tier | 92 / 53 / 40 px, Anton |
+| Headline tier | 48 / 32 / 32 px, Anton |
+| Body | system sans throughout |
+| Page/viewport combinations | **96** |
+| Maximum horizontal overflow | **0 px** |
+| Text overflowing its own box | **0** |
+| Uncaught JavaScript errors | **0** |

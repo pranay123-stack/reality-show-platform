@@ -32,8 +32,8 @@ export function HouseSpotlight() {
 
       <div className="container relative space-y-10">
         <SectionHeading
-          eyebrow="House trending now"
-          title="See who owns the spotlight."
+          eyebrow="House heat"
+          title="The house is moving"
           kicker={
             <>
               Heat moves because the audience moved.

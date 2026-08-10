@@ -56,14 +56,18 @@
   --ring: 330 85% 58%;
   --radius: 0.875rem;
 
-  /* Typography: system stacks only — no webfont fetch at build or runtime, which
-     keeps the build hermetic and the first paint free of layout shift. */
+  /* Body stays on the system stack: nothing is fetched for the text people
+     actually read, so the first paint is immediate and never reflows. */
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     'Noto Sans', sans-serif;
+
+  /* Titles are set in a condensed poster face, supplied by `next/font` and
+     self-hosted, so the request is build-time rather than runtime. The stack
+     below is what shows if that variable is ever absent. */
   --font-display:
-    'Segoe UI Semibold', ui-sans-serif, system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial,
-    sans-serif;
+    var(--font-anton), 'Haettenschweiler', 'Arial Narrow', 'Segoe UI Semibold', ui-sans-serif,
+    system-ui, sans-serif;
 }
 
 .light {

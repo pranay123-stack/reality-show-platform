@@ -7,6 +7,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { CountUp } from '@/components/system/premium';
+import { GlowBorder, LightSweep, SignalBars } from '@/components/system/showcase';
 import { cardHover, fadeUp } from '@/lib/motion';
 
 /**
@@ -38,6 +39,7 @@ const THEME = {
     glow: 'group-hover:shadow-[0_18px_55px_-20px_hsl(var(--neon-pink)/0.6)]',
     halo: 'bg-neon-pink/20',
     rule: 'from-neon-pink/70',
+    tint: 'hsl(var(--neon-pink) / 0.55)',
   },
   cyan: {
     text: 'text-neon-cyan',
@@ -45,6 +47,7 @@ const THEME = {
     glow: 'group-hover:shadow-[0_18px_55px_-20px_hsl(var(--neon-cyan)/0.6)]',
     halo: 'bg-neon-cyan/20',
     rule: 'from-neon-cyan/70',
+    tint: 'hsl(var(--neon-cyan) / 0.55)',
   },
   purple: {
     text: 'text-neon-purple',
@@ -52,6 +55,7 @@ const THEME = {
     glow: 'group-hover:shadow-[0_18px_55px_-20px_hsl(var(--neon-purple)/0.6)]',
     halo: 'bg-neon-purple/20',
     rule: 'from-neon-purple/70',
+    tint: 'hsl(var(--neon-purple) / 0.55)',
   },
   gold: {
     text: 'text-neon-gold',
@@ -59,6 +63,7 @@ const THEME = {
     glow: 'group-hover:shadow-[0_18px_55px_-20px_hsl(var(--neon-gold)/0.6)]',
     halo: 'bg-neon-gold/20',
     rule: 'from-neon-gold/70',
+    tint: 'hsl(var(--neon-gold) / 0.55)',
   },
 } as const;
 
@@ -136,6 +141,8 @@ export function EntertainmentCard({
           aria-hidden
           className={cn('absolute inset-x-0 top-0 h-px bg-gradient-to-r to-transparent', theme.rule)}
         />
+        <GlowBorder tint={theme.tint} />
+        <LightSweep />
 
         <div className="relative flex flex-1 flex-col gap-4">
           {/* Top: what it is, and whether it is happening. */}
@@ -155,18 +162,22 @@ export function EntertainmentCard({
                 status.chip,
               )}
             >
-              <span className="relative flex h-1.5 w-1.5">
-                {status.pulse && (
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'absolute inline-flex h-full w-full animate-ping rounded-full opacity-70',
-                      status.dot,
-                    )}
-                  />
-                )}
-                <span aria-hidden className={cn('relative h-1.5 w-1.5 rounded-full', status.dot)} />
-              </span>
+              {statusKey === 'live' ? (
+                <SignalBars />
+              ) : (
+                <span className="relative flex h-1.5 w-1.5">
+                  {status.pulse && (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'absolute inline-flex h-full w-full animate-ping rounded-full opacity-70',
+                        status.dot,
+                      )}
+                    />
+                  )}
+                  <span aria-hidden className={cn('relative h-1.5 w-1.5 rounded-full', status.dot)} />
+                </span>
+              )}
               {statusLabel ?? status.label}
             </span>
           </div>
@@ -184,9 +195,7 @@ export function EntertainmentCard({
 
           {/* The question this feature asks. */}
           <div className="space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
-              {title}
-            </p>
+            <p className={cn('label-broadcast', theme.text)}>{title}</p>
             <p className="text-lg font-semibold leading-tight text-balance">{question}</p>
           </div>
 

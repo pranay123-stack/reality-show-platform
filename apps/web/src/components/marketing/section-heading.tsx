@@ -4,7 +4,7 @@ import { cn } from '@reality/ui';
 import { motion } from 'framer-motion';
 import type { ReactNode } from 'react';
 
-import { fadeUp, stagger, viewportOnce } from '@/lib/motion';
+import { fadeUp, sceneReveal, stagger, viewportOnce } from '@/lib/motion';
 
 /**
  * How every section on the marketing surface opens.
@@ -61,14 +61,11 @@ export function SectionHeading({
       )}
     >
       <div className={cn('min-w-0 space-y-3', align === 'center' && 'flex flex-col items-center')}>
-        <motion.p
-          variants={fadeUp}
-          className={cn('text-xs font-semibold uppercase tracking-[0.22em]', TONE[tone])}
-        >
+        <motion.p variants={fadeUp} className={cn('label-broadcast', TONE[tone])}>
           {eyebrow}
         </motion.p>
 
-        <motion.h2 variants={fadeUp} className="text-headline font-semibold text-balance">
+        <motion.h2 variants={sceneReveal} className="text-headline text-balance uppercase">
           {title}
         </motion.h2>
 

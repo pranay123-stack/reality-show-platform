@@ -38,10 +38,8 @@ export function ProfileWidget() {
         >
           <motion.div variants={fadeUp} className="space-y-6">
             <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-neon-gold">
-                Your reality profile
-              </p>
-              <h2 className="text-headline font-semibold text-balance">Play more. Climb higher.</h2>
+<p className="label-broadcast text-neon-gold">Your reality profile</p>
+              <h2 className="text-headline text-balance uppercase">Rise through the season</h2>
               <p className="max-w-md text-lg leading-snug text-muted">
                 Points for showing up.
                 <br />

@@ -170,6 +170,41 @@ const config: Config = {
           '0%, 100%': { opacity: '0.55' },
           '50%': { opacity: '1' },
         },
+        /*
+          The mesh. Three stops travelling on their own long orbits, so the
+          field never resolves into a pattern the eye can predict.
+        */
+        'mesh-a': {
+          '0%, 100%': { transform: 'translate3d(-8%, -6%, 0) scale(1.1)' },
+          '25%': { transform: 'translate3d(10%, 4%, 0) scale(1.3)' },
+          '50%': { transform: 'translate3d(4%, 12%, 0) scale(1)' },
+          '75%': { transform: 'translate3d(-6%, 6%, 0) scale(1.2)' },
+        },
+        'mesh-b': {
+          '0%, 100%': { transform: 'translate3d(6%, 8%, 0) scale(1.2)' },
+          '33%': { transform: 'translate3d(-10%, -4%, 0) scale(1)' },
+          '66%': { transform: 'translate3d(8%, -10%, 0) scale(1.35)' },
+        },
+        'mesh-c': {
+          '0%, 100%': { transform: 'translate3d(0, 10%, 0) scale(1)' },
+          '40%': { transform: 'translate3d(-12%, -8%, 0) scale(1.25)' },
+          '70%': { transform: 'translate3d(12%, 2%, 0) scale(1.1)' },
+        },
+        /* A single sweep of light crossing a surface, used on card hover. */
+        'sweep': {
+          from: { transform: 'translateX(-120%) skewX(-18deg)' },
+          to: { transform: 'translateX(220%) skewX(-18deg)' },
+        },
+        /* Barely-there vertical drift, so a card is never quite still. */
+        'float': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-4px)' },
+        },
+        /* A broadcast signal: three bars rising out of step. */
+        'signal': {
+          '0%, 100%': { transform: 'scaleY(0.35)' },
+          '50%': { transform: 'scaleY(1)' },
+        },
       },
       animation: {
         'pulse-live': 'pulse-live 1.6s ease-in-out infinite',
@@ -181,6 +216,12 @@ const config: Config = {
         dust: 'dust 90s linear infinite',
         'ray-sweep': 'ray-sweep 18s ease-in-out infinite',
         aura: 'aura 3s ease-in-out infinite',
+        'mesh-a': 'mesh-a 28s ease-in-out infinite',
+        'mesh-b': 'mesh-b 24s ease-in-out infinite',
+        'mesh-c': 'mesh-c 32s ease-in-out infinite',
+        sweep: 'sweep 1.1s ease-out',
+        float: 'float 6s ease-in-out infinite',
+        signal: 'signal 1s ease-in-out infinite',
       },
     },
   },

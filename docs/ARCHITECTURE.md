@@ -420,6 +420,7 @@ pnpm start                # production start (after build)
 | — | Visual experience pass | Cinematic layered background, glass card system, Framer Motion hero and eight bespoke feature cards. No business logic, API, schema or auth touched. |
 | — | Live arena iteration | Landing page reordered around what is happening now: Tonight's Arena, House Trending Now, interactive feature modules, and a clearly-labelled example profile. Presentation only. |
 | — | Entertainment typography pass | Three type tiers (display / headline / body), section copy cut to two lines, reality-show naming across the product, `EntertainmentCard`. Presentation and copy only. |
+| — | Cinematic experience layer | Display face (Anton, self-hosted via `next/font`), animated mesh background, blur-to-sharp scene reveals, glow/sweep card effects. Presentation only. |
 | 21 | Full test pass | unit + integration + Playwright E2E, all listed scenarios. |
 | 22 | Performance pass | load scenarios + bottleneck report + optimisations. |
 | 23 | Production Docker deployment | `docker-compose.prod.yml` stack verified from clean state. |
