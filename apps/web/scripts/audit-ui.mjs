@@ -37,7 +37,8 @@ const PUBLIC = ['/', '/login', '/signup', '/forgot-password'];
 
 const VIEWER = [
   '/dashboard', '/contestants', '/predictions', '/challenges', '/challenges/new',
-  '/perspectives', '/polls', '/nominations', '/evictions', '/kitchen', '/weekend',
+  '/perspectives', '/polls', '/nominations', '/evictions', '/kitchen', '/kitchen/markets',
+  '/weekend',
   '/rewards', '/my-rewards', '/leaderboard', '/notifications', '/profile',
 ];
 

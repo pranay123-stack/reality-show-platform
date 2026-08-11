@@ -1,4 +1,5 @@
 import {
+  CalendarHeart,
   Flame,
   Gift,
   LayoutDashboard,
@@ -6,10 +7,10 @@ import {
   MessagesSquare,
   Radio,
   Scale,
+  TrendingUp,
   Trophy,
-  UtensilsCrossed,
   Users,
-  CalendarHeart,
+  UtensilsCrossed,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -55,6 +56,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/contestants', label: 'House Heat', shortLabel: 'Heat', icon: Flame },
       { href: '/nominations', label: 'Nomination Night', shortLabel: 'Rounds', icon: Users, moduleKey: 'nominations' },
       { href: '/kitchen', label: 'Kitchen Battle', shortLabel: 'Kitchen', icon: UtensilsCrossed, moduleKey: 'kitchen' },
+      { href: '/kitchen/markets', label: 'Kitchen Markets', shortLabel: 'Markets', icon: TrendingUp },
       { href: '/weekend', label: 'Weekend Spotlight', shortLabel: 'Weekend', icon: CalendarHeart, moduleKey: 'weekend' },
     ],
   },

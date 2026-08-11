@@ -421,6 +421,7 @@ pnpm start                # production start (after build)
 | — | Live arena iteration | Landing page reordered around what is happening now: Tonight's Arena, House Trending Now, interactive feature modules, and a clearly-labelled example profile. Presentation only. |
 | — | Entertainment typography pass | Three type tiers (display / headline / body), section copy cut to two lines, reality-show naming across the product, `EntertainmentCard`. Presentation and copy only. |
 | — | Cinematic experience layer | Display face (Anton, self-hosted via `next/font`), animated mesh background, blur-to-sharp scene reveals, glow/sweep card effects. Presentation only. |
+| — | Kitchen Markets | Community-created prediction markets at `/kitchen/markets`. Models and scoring live in `@reality/shared` as the future API contract; state is a browser store until the server module lands. Production's budgeted kitchen decision at `/kitchen` is untouched. |
 | 21 | Full test pass | unit + integration + Playwright E2E, all listed scenarios. |
 | 22 | Performance pass | load scenarios + bottleneck report + optimisations. |
 | 23 | Production Docker deployment | `docker-compose.prod.yml` stack verified from clean state. |

@@ -2170,3 +2170,74 @@ Measured in a production browser, at 1440 / 834 / 390:
 | Maximum horizontal overflow | **0 px** |
 | Text overflowing its own box | **0** |
 | Uncaught JavaScript errors | **0** |
+
+---
+
+## Kitchen Markets
+
+A feature, not a visual pass: community-created prediction markets about what
+the house will do.
+
+### Two kitchens, kept apart
+
+`/kitchen` is production's budgeted food decision — it spends a real budget, it
+is resolved by an operator, and it has had a server module since Phase 12. None
+of it was touched.
+
+`/kitchen/markets` is the audience predicting *what the house will do*: who
+cooks, who wins, whether the argument happens. They share a subject and nothing
+else, which is why they are separate models rather than a flag on one.
+
+### Where the authority is meant to live
+
+`packages/shared/src/schemas/kitchen-markets.ts` is written as the API contract,
+not as frontend props. `createKitchenMarketSchema` is what the future route
+parses; `KitchenMarket` is what it returns. Two fields are deliberately absent
+from anything a client sends — `winningOptionId` and `pointsAwarded` — because a
+prediction market where the browser names the winner is not a prediction market.
+A test asserts the schema strips both.
+
+The scoring table lives there too, beside the types, because the server will
+need exactly those numbers and two copies of a points table is how a platform
+ends up paying differently depending on which one you ask.
+
+### What this is, and what it is not
+
+The server module does not exist yet. Rather than mock the screens with static
+data — which shows the design and proves nothing — the state transitions are
+real: creating a market, predicting on one, recomputing shares, ranking the
+result. It is a working prototype held in `sessionStorage`.
+
+**Its points are not platform points.** They never touch `PointsLedger`, cannot
+move a leaderboard, and vanish with the tab. Twenty phases rest on the rule that
+only the server awards a point, and a browser-side market quietly minting them
+would be the worst thing this codebase could ship. The screen says so in an
+`Alert` at the top, and the payout panel repeats it.
+
+### Delivered
+
+| Piece | Where |
+| --- | --- |
+| Five market templates | dish challenge, contestant battle, house decision, cooking duty, drama |
+| Market card | question, top three shares, players, countdown, one way in |
+| Five-step composer | category → question → options → slot → publish, validated by the shared schema |
+| Detail page | creator, live shares, payout breakdown, top predictors |
+| Kitchen Champions | a three-place podium and the rest as a list |
+| Landing card | the Kitchen Battle feature card is now a live market |
+
+### Verification
+
+18 new tests. The scoring ones matter most — those numbers are what the server
+module will be checked against.
+
+One test failure was worth keeping: predicting in one test leaked into the next
+through `sessionStorage`, because storage survives Testing Library's `cleanup`.
+Fixed in `tests/setup.tsx` rather than in the test — it is the same class of
+shared-state leak the integration suite's advisory lock exists to prevent, at a
+smaller scale.
+
+| Check | Result |
+| --- | --- |
+| Page/viewport combinations | **99** (33 routes × 1440 / 834 / 390) |
+| Maximum horizontal overflow | **0 px** |
+| Create and predict flows, driven in a browser | both complete, no console errors |

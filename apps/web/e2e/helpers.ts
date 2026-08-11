@@ -23,6 +23,7 @@ export const VIEWER_ROUTES = [
   '/nominations',
   '/evictions',
   '/kitchen',
+  '/kitchen/markets',
   '/weekend',
   '/rewards',
   '/my-rewards',

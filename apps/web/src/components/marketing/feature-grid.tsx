@@ -22,7 +22,7 @@ import { featureMetrics } from '@/lib/mock-arena';
 import {
   challengeDemo,
   heatDemo,
-  kitchenDemo,
+  kitchenMarketDemo,
   livePollDemo,
   nominationDemo,
   perspectiveDemo,
@@ -50,6 +50,10 @@ export function FeatureGrid() {
   );
   const nominationCloses = useMemo(
     () => new Date(Date.now() + nominationDemo.closesInSeconds * 1000).toISOString(),
+    [],
+  );
+  const kitchenMarketCloses = useMemo(
+    () => new Date(Date.now() + kitchenMarketDemo.closesInSeconds * 1000).toISOString(),
     [],
   );
 
@@ -253,41 +257,28 @@ export function FeatureGrid() {
       <li>
         <EntertainmentCard
           icon={<ChefHat className="h-5 w-5" aria-hidden />}
-          title="Kitchen Battle"
-          question="What do they eat tomorrow?"
+          title="Kitchen Market"
+          question="Who cooks tonight's dinner?"
           theme="cyan"
-          status="open"
-          metric={featureMetrics.kitchen}
-          cta={{ label: 'Pick the menu', href: '/kitchen' }}
+          status="live"
+          metric={kitchenMarketDemo.metric}
+          cta={{ label: 'Make prediction', href: '/kitchen/markets' }}
           preview={
             <div className="space-y-3">
-              <ul className="flex flex-wrap gap-1.5">
-                {kitchenDemo.basket.map((item) => (
-                  <li
-                    key={item.label}
-                    className={cn(
-                      'rounded-full border px-2.5 py-1 text-xs',
-                      item.chosen
-                        ? 'border-neon-cyan/35 bg-neon-cyan/10 text-neon-cyan'
-                        : 'border-white/10 bg-white/[0.03] text-muted line-through',
-                    )}
-                  >
-                    {item.label}
-                  </li>
+              <div className="space-y-2.5">
+                {kitchenMarketDemo.options.map((option) => (
+                  <ShareRow
+                    key={option.name}
+                    label={option.name}
+                    percent={option.percent}
+                    tone="cyan"
+                    avatar={<Avatar name={option.name} size="sm" className="h-5 w-5 text-[9px]" />}
+                  />
                 ))}
-              </ul>
-              <div className="space-y-1.5">
-                <div className="flex items-baseline justify-between text-xs">
-                  <span className="text-muted">Budget</span>
-                  <span className="tabular-nums text-foreground">
-                    <CountUp value={kitchenDemo.budgetSpent} /> /{' '}
-                    {kitchenDemo.budgetTotal.toLocaleString()}
-                  </span>
-                </div>
-                <Meter
-                  percent={(kitchenDemo.budgetSpent / kitchenDemo.budgetTotal) * 100}
-                  tone="cyan"
-                />
+              </div>
+              <div className="flex items-center justify-between gap-2 text-xs text-muted">
+                <span>Closes in</span>
+                <Countdown to={kitchenMarketCloses} finishedLabel="Closed" />
               </div>
             </div>
           }

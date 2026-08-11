@@ -57,6 +57,18 @@ export const nominationDemo = {
   closesInSeconds: 1_845,
 };
 
+/** The kitchen market the landing page previews. */
+export const kitchenMarketDemo = {
+  question: "Who cooks tonight's dinner?",
+  metric: { value: 9_412, label: 'predictions in' },
+  options: [
+    { name: 'Mira Sol', percent: 42 },
+    { name: 'Aria Vale', percent: 31 },
+    { name: 'Dev Rahman', percent: 18 },
+  ],
+  closesInSeconds: 9_252,
+};
+
 export const kitchenDemo = {
   budgetTotal: 5_000,
   budgetSpent: 3_150,

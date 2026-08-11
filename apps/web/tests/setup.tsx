@@ -18,6 +18,14 @@ import type * as ApiClient from '@/lib/api-client';
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  /*
+    Storage survives `cleanup()`, so a feature that persists session state —
+    Kitchen Markets does — carries one test's predictions into the next. That is
+    the same class of leak the integration suite's advisory lock exists to
+    prevent, at a smaller scale.
+  */
+  window.sessionStorage.clear();
+  window.localStorage.clear();
 });
 
 // --- Routing ---------------------------------------------------------------

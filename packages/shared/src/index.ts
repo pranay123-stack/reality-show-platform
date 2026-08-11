@@ -9,6 +9,7 @@ export * from './schemas/predictions';
 export * from './schemas/challenges';
 export * from './schemas/perspectives';
 export * from './schemas/kitchen';
+export * from './schemas/kitchen-markets';
 export * from './schemas/weekend';
 export * from './schemas/leaderboards';
 export * from './schemas/notifications';
